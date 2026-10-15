@@ -58,8 +58,8 @@ class StreamRecorder @Inject constructor(
 
             body.byteStream().use { input ->
                 FileOutputStream(outputFile).use { output ->
-                    var bytesRead: Int
-                    while (coroutineContext.isActive && input.read(buffer).also { bytesRead = it } != -1) {
+                    var bytesRead = input.read(buffer)
+                    while (coroutineContext.isActive && bytesRead != -1) {
                         output.write(buffer, 0, bytesRead)
                         totalBytes += bytesRead
 
@@ -69,6 +69,7 @@ class StreamRecorder @Inject constructor(
                             emit(RecordState.Recording(totalBytes, durationSec, outputFile.absolutePath))
                             lastUpdate = now
                         }
+                        bytesRead = input.read(buffer)
                     }
                 }
             }
