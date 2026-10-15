@@ -1,0 +1,41 @@
+name: Android Enterprise CI/CD
+
+on:
+  push:
+    branches: [ "**" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Production AAB & APK
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v4
+      with:
+        gradle-version: '8.10.2'
+
+    - name: Build Release Bundle (AAB) & APK
+      run: gradle bundleRelease assembleRelease --no-daemon
+
+    - name: Upload Production AAB Artifact (For Google Play)
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release-aab
+        path: app/build/outputs/bundle/release/*.aab
+
+    - name: Upload Production APK Artifact (For Direct Testing)
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release-apk
+        path: app/build/outputs/apk/release/*.apk
