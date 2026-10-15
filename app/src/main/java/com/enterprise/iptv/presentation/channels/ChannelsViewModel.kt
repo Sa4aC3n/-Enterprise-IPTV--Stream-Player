@@ -56,7 +56,16 @@ class ChannelsViewModel @Inject constructor(
         }
     }
 
-    val uiState: StateFlow<ChannelsUiState> = combine(
+    private data class ChannelFilterResult(
+        val channels: List<Channel>,
+        val categories: List<String>,
+        val countries: List<String>,
+        val selectedCategory: String?,
+        val selectedCountry: String?,
+        val query: String
+    )
+
+    private val channelDataFlow = combine(
         _selectedCategory,
         _selectedCountry,
         _searchQuery
@@ -66,30 +75,35 @@ class ChannelsViewModel @Inject constructor(
         combine(
             repository.getFilteredChannels(category, country, null, query.ifBlank { null }),
             repository.getAllCategories(),
-            repository.getAllCountries(),
-            _currentChannel,
-            playerEngine.playbackStatus,
-            _recordState,
-            _isImporting
-        ) { channels, categories, countries, currentChannel, playbackStatus, recordState, isImporting ->
-            // تشغيل القناة الأولى تلقائياً عند أول فتح للتطبيق
-            if (currentChannel == null && channels.isNotEmpty()) {
-                onChannelSelect(channels.first())
-            }
-
-            ChannelsUiState.Success(
-                channels = channels,
-                categories = categories,
-                selectedCategory = category,
-                countries = countries,
-                selectedCountry = country,
-                currentChannel = currentChannel,
-                playbackStatus = playbackStatus,
-                recordState = recordState,
-                isImporting = isImporting,
-                searchQuery = query
-            )
+            repository.getAllCountries()
+        ) { channels, categories, countries ->
+            ChannelFilterResult(channels, categories, countries, category, country, query)
         }
+    }
+
+    val uiState: StateFlow<ChannelsUiState> = combine(
+        channelDataFlow,
+        _currentChannel,
+        playerEngine.playbackStatus,
+        _recordState,
+        _isImporting
+    ) { filterResult, currentChannel, playbackStatus, recordState, isImporting ->
+        if (currentChannel == null && filterResult.channels.isNotEmpty()) {
+            onChannelSelect(filterResult.channels.first())
+        }
+
+        ChannelsUiState.Success(
+            channels = filterResult.channels,
+            categories = filterResult.categories,
+            selectedCategory = filterResult.selectedCategory,
+            countries = filterResult.countries,
+            selectedCountry = filterResult.selectedCountry,
+            currentChannel = currentChannel,
+            playbackStatus = playbackStatus,
+            recordState = recordState,
+            isImporting = isImporting,
+            searchQuery = filterResult.query
+        )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
