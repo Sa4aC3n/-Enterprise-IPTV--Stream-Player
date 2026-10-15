@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base Theme -->
+    <style name="Theme.EnterpriseIPTV" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">#000000</item>
+        <item name="android:navigationBarColor">#000000</item>
+    </style>
+
+    <!-- Modern Android 12+ Splash Screen Theme -->
+    <style name="Theme.EnterpriseIPTV.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#0D1117</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_iptv_logo</item>
+        <item name="windowSplashScreenIconBackgroundColor">#0D1117</item>
+        <item name="postSplashScreenTheme">@style/Theme.EnterpriseIPTV</item>
+    </style>
+</resources>
