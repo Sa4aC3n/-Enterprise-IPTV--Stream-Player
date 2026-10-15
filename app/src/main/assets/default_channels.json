@@ -1,14 +1,122 @@
 ﻿{
-    "version":  2,
+    "version":  3,
     "last_updated":  "2026-10-15",
     "channels":  [
                      {
-                         "id":  "aljazeera_ar",
-                         "name":  "قناة الجزيرة الإخبارية",
+                         "id":  "egypt_quran",
+                         "name":  "مصر قرآن كريم (Egypt Quran)",
+                         "stream_url":  "https://live.sba.sa/quran/index.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/QuranTV.sa.png",
+                         "category":  "إسلامية",
+                         "country":  "EG",
+                         "language":  "ar"
+                     },
+                     {
+                         "id":  "nile_sports",
+                         "name":  "النيل للرياضة الأرضية (Nile Sports)",
+                         "stream_url":  "https://nilesat.live/nilesports/index.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/NileSports.eg.png",
+                         "category":  "رياضة",
+                         "country":  "EG",
+                         "language":  "ar"
+                     },
+                     {
+                         "id":  "extra_news",
+                         "name":  "إكسترا نيوز (Extra News)",
+                         "stream_url":  "https://live.alarabiya.net/alarabiya/extranews.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/ExtraNews.eg.png",
+                         "category":  "أخبار",
+                         "country":  "EG",
+                         "language":  "ar"
+                     },
+                     {
+                         "id":  "alqahera_news",
+                         "name":  "قناة القاهرة الإخبارية (Al Qahera News)",
+                         "stream_url":  "https://live.alarabiya.net/alarabiya/alqaheranews.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/AlQaheraNews.eg.png",
+                         "category":  "أخبار",
+                         "country":  "EG",
+                         "language":  "ar"
+                     },
+                     {
+                         "id":  "alnahar_tv",
+                         "name":  "النهار (Al Nahar TV)",
+                         "stream_url":  "https://alnaharlive.clerky.net/hls/alnahartv.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/AlNaharTV.eg.png",
+                         "category":  "مسلسلات",
+                         "country":  "EG",
+                         "language":  "ar"
+                     },
+                     {
+                         "id":  "sada_elbalad",
+                         "name":  "صدى البلد (Sada El Balad)",
+                         "stream_url":  "https://live.cleardefense.com/sadatv/index.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/SadaElBalad.eg.png",
+                         "category":  "عام وترفيه",
+                         "country":  "EG",
+                         "language":  "ar"
+                     },
+                     {
+                         "id":  "quran_saudi",
+                         "name":  "قناة القرآن الكريم (السعودية - مكة المكرمة)",
+                         "stream_url":  "https://aloula.sba.sa/live/quran/index.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/QuranTV.sa.png",
+                         "category":  "إسلامية",
+                         "country":  "SA",
+                         "language":  "ar"
+                     },
+                     {
+                         "id":  "sunnah_saudi",
+                         "name":  "قناة السنة النبوية (السعودية - المدينة المنورة)",
+                         "stream_url":  "https://aloula.sba.sa/live/sunnah/index.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/SunnahTV.sa.png",
+                         "category":  "إسلامية",
+                         "country":  "SA",
+                         "language":  "ar"
+                     },
+                     {
+                         "id":  "alhadath_news",
+                         "name":  "العربية الحدث (Al Hadath)",
+                         "stream_url":  "https://live.alarabiya.net/alarabiya/alhadath.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/AlHadath.ae.png",
+                         "category":  "أخبار",
+                         "country":  "AE",
+                         "language":  "ar"
+                     },
+                     {
+                         "id":  "aljazeera_news",
+                         "name":  "الجزيرة الإخبارية (Al Jazeera)",
                          "stream_url":  "https://live-hls-web-aje.getaj.net/AJE/03.m3u8",
-                         "logo_url":  "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Aljazeera_Logo.svg/200px-Aljazeera_Logo.svg.png",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/AlJazeeraChannel.qa.png",
                          "category":  "أخبار",
                          "country":  "QA",
+                         "language":  "ar"
+                     },
+                     {
+                         "id":  "skynews_arabia",
+                         "name":  "سكاي نيوز عربية (Sky News Arabia)",
+                         "stream_url":  "https://skynewsarabia.live.net.ae/hls/live/203991/snarabi/index.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/SkyNewsArabia.ae.png",
+                         "category":  "أخبار",
+                         "country":  "AE",
+                         "language":  "ar"
+                     },
+                     {
+                         "id":  "dubai_sports",
+                         "name":  "دبي الرياضية (Dubai Sports)",
+                         "stream_url":  "https://dmi.live-s.cdn.bitgravity.com/cdn/live/dsm/index.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/DubaiSports1.ae.png",
+                         "category":  "رياضة",
+                         "country":  "AE",
+                         "language":  "ar"
+                     },
+                     {
+                         "id":  "ad_sports_1",
+                         "name":  "أبوظبي الرياضية 1 (AD Sports 1)",
+                         "stream_url":  "https://admedia-channels.akamaized.net/hls/live/2210816/ADSports1HD/index.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/ADSports1.ae.png",
+                         "category":  "رياضة",
+                         "country":  "AE",
                          "language":  "ar"
                      },
                      {
