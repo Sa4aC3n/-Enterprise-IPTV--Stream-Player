@@ -126,7 +126,7 @@ class ChannelsViewModel @Inject constructor(
 
     fun onChannelSelect(channel: Channel) {
         _currentChannel.value = channel
-        playerEngine.playChannel(channel.streamUrl)
+        playerEngine.playChannel(channel.streamUrl, channel.backupUrls)
     }
 
     fun toggleFavorite(channel: Channel) {

@@ -270,9 +270,12 @@ fun VideoPlayerContainer(
     val resizeMode by playerEngine.resizeMode.collectAsState()
     val availableQualities by playerEngine.availableQualities.collectAsState()
     val selectedQuality by playerEngine.selectedQuality.collectAsState()
+    val servers by playerEngine.servers.collectAsState()
+    val currentServerIndex by playerEngine.currentServerIndex.collectAsState()
 
     var showVolumeSlider by remember { mutableStateOf(false) }
     var showQualityDialog by remember { mutableStateOf(false) }
+    var showServerDialog by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         AndroidView(
@@ -325,6 +328,25 @@ fun VideoPlayerContainer(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
+                    // زر تبديل السيرفر (في حال توفر سيرفرات بديلة)
+                    if (servers.size > 1) {
+                        AssistChip(
+                            onClick = { showServerDialog = true },
+                            label = {
+                                Text(
+                                    text = servers.getOrNull(currentServerIndex)?.name ?: "سيرفر",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = AccentTeal
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Dns, contentDescription = null, tint = AccentTeal, modifier = Modifier.size(16.dp))
+                            },
+                            colors = AssistChipDefaults.assistChipColors(containerColor = Color.Black.copy(alpha = 0.6f))
+                        )
+                    }
+
                     // زر تبديل جودة البث (SD / HD / Auto)
                     AssistChip(
                         onClick = { showQualityDialog = true },
@@ -521,6 +543,63 @@ fun VideoPlayerContainer(
             }
         )
     }
+
+    // نافذة اختيار سيرفر البث (في حال توفر بدائل)
+    if (showServerDialog) {
+        AlertDialog(
+            onDismissRequest = { showServerDialog = false },
+            title = { Text("اختر سيرفر البث (Server)", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    servers.forEachIndexed { index, srv ->
+                        val isSelected = index == currentServerIndex
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable {
+                                    playerEngine.selectServer(index)
+                                    showServerDialog = false
+                                }
+                                .background(if (isSelected) AccentTeal.copy(alpha = 0.15f) else Color.Transparent)
+                                .padding(vertical = 10.dp, horizontal = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(
+                                    selected = isSelected,
+                                    onClick = {
+                                        playerEngine.selectServer(index)
+                                        showServerDialog = false
+                                    }
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text = srv.name,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isSelected) AccentTeal else Color.White
+                                )
+                            }
+                            if (index == 0) {
+                                Text(
+                                    text = "رئيسي",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.LightGray
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showServerDialog = false }) {
+                    Text(stringResource(R.string.btn_cancel))
+                }
+            }
+        )
+    }
 }
 
 /**
@@ -699,6 +778,21 @@ fun ChannelsList(
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                 color = if (isSelected) AccentTeal else Color.White
                             )
+                            if (channel.backupUrls.isNotEmpty()) {
+                                Spacer(Modifier.width(6.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = AccentTeal.copy(alpha = 0.2f)
+                                ) {
+                                    Text(
+                                        text = "${channel.backupUrls.size + 1} سيرفر",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = AccentTeal,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
                         }
                     },
                     supportingContent = {

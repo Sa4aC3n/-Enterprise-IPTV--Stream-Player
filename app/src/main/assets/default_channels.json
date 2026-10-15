@@ -1,24 +1,18 @@
 ﻿{
-    "version":  6,
+    "version":  7,
     "last_updated":  "2026-10-15",
     "channels":  [
                      {
                          "id":  "on_tv_channel",
-                         "name":  "قناة ON (بث رئيسي)",
+                         "name":  "قناة ON",
                          "stream_url":  "http://95.170.215.124/live/disk1/ontv/playlist.m3u8",
                          "logo_url":  "https://iptv-org.github.io/iptv/logos/ON.eg.png",
                          "category":  "عام وترفيه",
                          "country":  "EG",
-                         "language":  "ar"
-                     },
-                     {
-                         "id":  "on_tv_server2",
-                         "name":  "قناة ON (سيرفر بديل)",
-                         "stream_url":  "https://bcovlive-a.akamaihd.net/ba3169004d40484b9ff29e194964c9e8/eu-west-1/6057955906001/playlist.m3u8",
-                         "logo_url":  "https://iptv-org.github.io/iptv/logos/ON.eg.png",
-                         "category":  "عام وترفيه",
-                         "country":  "EG",
-                         "language":  "ar"
+                         "language":  "ar",
+                         "backup_urls":  [
+                                             "https://bcovlive-a.akamaihd.net/ba3169004d40484b9ff29e194964c9e8/eu-west-1/6057955906001/playlist.m3u8"
+                                         ]
                      },
                      {
                          "id":  "on_drama_channel",
@@ -49,16 +43,19 @@
                      },
                      {
                          "id":  "cbc_channel",
-                         "name":  "قناة CBC (بث رئيسي)",
+                         "name":  "قناة CBC",
                          "stream_url":  "https://flu.systemnet.tv/CBC/index.m3u8",
                          "logo_url":  "https://iptv-org.github.io/iptv/logos/CBCEgypt.eg.png",
                          "category":  "عام وترفيه",
                          "country":  "EG",
-                         "language":  "ar"
+                         "language":  "ar",
+                         "backup_urls":  [
+                                             "http://95.170.215.124/live/disk1/CBC_Drama/playlist.m3u8"
+                                         ]
                      },
                      {
                          "id":  "cbc_drama_channel",
-                         "name":  "قناة CBC دراما (سيرفر بديل)",
+                         "name":  "قناة CBC",
                          "stream_url":  "http://95.170.215.124/live/disk1/CBC_Drama/playlist.m3u8",
                          "logo_url":  "https://iptv-org.github.io/iptv/logos/CBCDrama.eg.png",
                          "category":  "مسلسلات",
@@ -67,12 +64,15 @@
                      },
                      {
                          "id":  "dmc_channel_server2",
-                         "name":  "قناة DMC (سيرفر بديل)",
+                         "name":  "قناة DMC",
                          "stream_url":  "http://95.170.215.124/live/disk1/dmc/anevia1/dmc.m3u8",
                          "logo_url":  "https://iptv-org.github.io/iptv/logos/DMC.eg.png",
                          "category":  "عام وترفيه",
                          "country":  "EG",
-                         "language":  "ar"
+                         "language":  "ar",
+                         "backup_urls":  [
+                                             "https://bcovlive-a.akamaihd.net/ba3169004d40484b9ff29e194964c9e8/eu-west-1/6057955906001/playlist.m3u8"
+                                         ]
                      },
                      {
                          "id":  "egypt_quran",
@@ -130,12 +130,15 @@
                      },
                      {
                          "id":  "quran_saudi",
-                         "name":  "قناة القرآن الكريم (السعودية - مكة المكرمة)",
+                         "name":  "قناة مكة الفضائية",
                          "stream_url":  "https://aloula.sba.sa/live/quran/index.m3u8",
                          "logo_url":  "https://iptv-org.github.io/iptv/logos/QuranTV.sa.png",
                          "category":  "إسلامية",
                          "country":  "SA",
-                         "language":  "ar"
+                         "language":  "ar",
+                         "backup_urls":  [
+                                             "https://stream.media.islamway.net/live/makkah/playlist.m3u8"
+                                         ]
                      },
                      {
                          "id":  "sunnah_saudi",
@@ -144,7 +147,10 @@
                          "logo_url":  "https://iptv-org.github.io/iptv/logos/SunnahTV.sa.png",
                          "category":  "إسلامية",
                          "country":  "SA",
-                         "language":  "ar"
+                         "language":  "ar",
+                         "backup_urls":  [
+                                             "https://stream.media.islamway.net/live/sunnah/playlist.m3u8"
+                                         ]
                      },
                      {
                          "id":  "alhadath_news",
@@ -234,7 +240,10 @@
                          "logo_url":  "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Quran_TV_Saudi_Logo.png/200px-Quran_TV_Saudi_Logo.png",
                          "category":  "إسلامية",
                          "country":  "SA",
-                         "language":  "ar"
+                         "language":  "ar",
+                         "backup_urls":  [
+                                             "https://live.makhtv.net/hls/quran/index.m3u8"
+                                         ]
                      },
                      {
                          "id":  "sunnah_tv",
@@ -3433,7 +3442,7 @@
                      },
                      {
                          "id":  "makkah_tv_main",
-                         "name":  "قناة مكة الفضائية (رئيسي)",
+                         "name":  "قناة مكة الفضائية",
                          "logo_url":  "https://i.imgur.com/9wO4e2M.png",
                          "country":  "SA",
                          "language":  "ar",
@@ -3441,31 +3450,16 @@
                          "stream_url":  "https://live.makhtv.net/hls/makkah/index.m3u8"
                      },
                      {
-                         "id":  "makkah_tv_alt",
-                         "name":  "قناة مكة الفضائية (سيرفر بديل)",
-                         "logo_url":  "https://i.imgur.com/9wO4e2M.png",
-                         "country":  "SA",
-                         "language":  "ar",
-                         "category":  "إسلامية",
-                         "stream_url":  "https://stream.media.islamway.net/live/makkah/playlist.m3u8"
-                     },
-                     {
                          "id":  "zad_tv_main",
-                         "name":  "قناة زاد الفضائية (رئيسي)",
+                         "name":  "قناة زاد الفضائية",
                          "logo_url":  "https://zadgroup.net/wp-content/uploads/2021/04/zad-tv-logo.png",
                          "country":  "SA",
                          "language":  "ar",
                          "category":  "إسلامية",
-                         "stream_url":  "https://live.zadgroup.net/zad/index.m3u8"
-                     },
-                     {
-                         "id":  "zad_tv_alt",
-                         "name":  "قناة زاد الفضائية (سيرفر بديل)",
-                         "logo_url":  "https://zadgroup.net/wp-content/uploads/2021/04/zad-tv-logo.png",
-                         "country":  "SA",
-                         "language":  "ar",
-                         "category":  "إسلامية",
-                         "stream_url":  "https://cdn.zad.tv/live/zadtv/playlist.m3u8"
+                         "stream_url":  "https://live.zadgroup.net/zad/index.m3u8",
+                         "backup_urls":  [
+                                             "https://cdn.zad.tv/live/zadtv/playlist.m3u8"
+                                         ]
                      },
                      {
                          "id":  "ahlu_alquran",
@@ -3495,24 +3489,6 @@
                          "stream_url":  "https://live.islamchannel.tv/hls/islamchannel/index.m3u8"
                      },
                      {
-                         "id":  "quran_kareem_alt",
-                         "name":  "قناة القرآن الكريم (مكة - سيرفر بديل)",
-                         "logo_url":  "https://upload.wikimedia.org/wikipedia/ar/d/d4/Quran_tv.png",
-                         "country":  "SA",
-                         "language":  "ar",
-                         "category":  "إسلامية",
-                         "stream_url":  "https://live.makhtv.net/hls/quran/index.m3u8"
-                     },
-                     {
-                         "id":  "sunnah_nabawia_alt",
-                         "name":  "قناة السنة النبوية (المدينة - سيرفر بديل)",
-                         "logo_url":  "https://upload.wikimedia.org/wikipedia/ar/e/e0/Sunnah_tv.png",
-                         "country":  "SA",
-                         "language":  "ar",
-                         "category":  "إسلامية",
-                         "stream_url":  "https://stream.media.islamway.net/live/sunnah/playlist.m3u8"
-                     },
-                     {
                          "id":  "egypt_ch1",
                          "name":  "القناة الأولى المصرية",
                          "logo_url":  "https://iptv-org.github.io/iptv/logos/EgyptianTV1.eg.png",
@@ -3532,21 +3508,15 @@
                      },
                      {
                          "id":  "al_rahma_tv",
-                         "name":  "قناة الرحمة الفضائية (رئيسي)",
+                         "name":  "قناة الرحمة الفضائية",
                          "logo_url":  "https://i.imgur.com/9wO4e2M.png",
                          "country":  "EG",
                          "language":  "ar",
                          "category":  "إسلامية",
-                         "stream_url":  "https://live.alrahma.tv/hls/alrahmatv/index.m3u8"
-                     },
-                     {
-                         "id":  "al_rahma_tv_alt",
-                         "name":  "قناة الرحمة الفضائية (سيرفر بديل)",
-                         "logo_url":  "https://i.imgur.com/9wO4e2M.png",
-                         "country":  "EG",
-                         "language":  "ar",
-                         "category":  "إسلامية",
-                         "stream_url":  "https://stream.alrahma.tv/live/smil:alrahma.smil/playlist.m3u8"
+                         "stream_url":  "https://live.alrahma.tv/hls/alrahmatv/index.m3u8",
+                         "backup_urls":  [
+                                             "https://stream.alrahma.tv/live/smil:alrahma.smil/playlist.m3u8"
+                                         ]
                      },
                      {
                          "id":  "al_aqsa_live",
@@ -3565,6 +3535,54 @@
                          "language":  "ar",
                          "category":  "إسلامية",
                          "stream_url":  "https://makkahlive.org/hls/hajj/index.m3u8"
+                     },
+                     {
+                         "id":  "zee_alwan",
+                         "category":  "مسلسلات",
+                         "name":  "قناة زي ألوان",
+                         "backup_urls":  [
+                                             "https://weyyak-live.akamaized.net/weyyak_zee_alwan/index.m3u8"
+                                         ],
+                         "language":  "ar",
+                         "country":  "AE",
+                         "stream_url":  "https://zee-live.akamaized.net/hls/live/2034293/zeealwan/index.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/ZeeAlwan.ae.png"
+                     },
+                     {
+                         "id":  "zee_aflam",
+                         "category":  "أفلام",
+                         "name":  "قناة زي أفلام",
+                         "backup_urls":  [
+                                             "https://weyyak-live.akamaized.net/weyyak_zee_aflam/index.m3u8"
+                                         ],
+                         "language":  "ar",
+                         "country":  "AE",
+                         "stream_url":  "https://zee-live.akamaized.net/hls/live/2034294/zeeaflam/index.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/ZeeAflam.ae.png"
+                     },
+                     {
+                         "id":  "majestic_cinema",
+                         "category":  "أفلام",
+                         "name":  "قناة ماجستيك سينما",
+                         "backup_urls":  [
+
+                                         ],
+                         "language":  "ar",
+                         "country":  "EG",
+                         "stream_url":  "https://live.majestic-tv.net/hls/majestic/index.m3u8",
+                         "logo_url":  "https://i.imgur.com/G5Zk31q.png"
+                     },
+                     {
+                         "id":  "majestic_drama",
+                         "category":  "مسلسلات",
+                         "name":  "قناة ماجستيك دراما",
+                         "backup_urls":  [
+
+                                         ],
+                         "language":  "ar",
+                         "country":  "EG",
+                         "stream_url":  "https://live.majestic-tv.net/hls/drama/index.m3u8",
+                         "logo_url":  "https://i.imgur.com/G5Zk31q.png"
                      }
                  ]
 }

@@ -7,7 +7,7 @@ import com.enterprise.iptv.data.local.entity.ChannelEntity
 
 @Database(
     entities = [ChannelEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class IptvDatabase : RoomDatabase() {

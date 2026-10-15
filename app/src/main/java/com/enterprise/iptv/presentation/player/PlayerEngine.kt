@@ -33,6 +33,11 @@ data class VideoQuality(
     val bitrate: Int = 0
 )
 
+data class StreamServer(
+    val name: String,
+    val url: String
+)
+
 @OptIn(UnstableApi::class)
 @Singleton
 class PlayerEngine @Inject constructor(
@@ -40,6 +45,13 @@ class PlayerEngine @Inject constructor(
 ) {
     private val _playbackStatus = MutableStateFlow<PlaybackStatus>(PlaybackStatus.Idle)
     val playbackStatus = _playbackStatus.asStateFlow()
+
+    // Stream Servers (Primary + Backups) & Auto-Failover
+    private val _servers = MutableStateFlow<List<StreamServer>>(emptyList())
+    val servers = _servers.asStateFlow()
+
+    private val _currentServerIndex = MutableStateFlow(0)
+    val currentServerIndex = _currentServerIndex.asStateFlow()
 
     // Volume & Mute State
     private val _volume = MutableStateFlow(1f)
@@ -71,7 +83,15 @@ class PlayerEngine @Inject constructor(
         }
 
         override fun onPlayerError(error: PlaybackException) {
-            _playbackStatus.value = PlaybackStatus.Error(error.localizedMessage ?: "Playback Error")
+            val nextIndex = _currentServerIndex.value + 1
+            val list = _servers.value
+            if (nextIndex < list.size) {
+                // Auto-failover to backup server
+                _currentServerIndex.value = nextIndex
+                playUrlInternal(list[nextIndex].url)
+            } else {
+                _playbackStatus.value = PlaybackStatus.Error(error.localizedMessage ?: "Playback Error")
+            }
         }
 
         override fun onTracksChanged(tracks: Tracks) {
@@ -122,8 +142,29 @@ class PlayerEngine @Inject constructor(
         _availableQualities.value = qualities.distinctBy { it.height }.sortedByDescending { it.height }
     }
 
-    fun playChannel(streamUrl: String) {
-        val mediaItem = MediaItem.fromUri(streamUrl)
+    fun playChannel(streamUrl: String, backupUrls: List<String> = emptyList()) {
+        val allUrls = (listOf(streamUrl) + backupUrls).filter { it.isNotBlank() }.distinct()
+        val serverList = allUrls.mapIndexed { index, url ->
+            val label = if (index == 0) "سيرفر 1 (رئيسي)" else "سيرفر ${index + 1} (بديل)"
+            StreamServer(label, url)
+        }
+        _servers.value = serverList
+        _currentServerIndex.value = 0
+        if (serverList.isNotEmpty()) {
+            playUrlInternal(serverList[0].url)
+        }
+    }
+
+    fun selectServer(index: Int) {
+        val list = _servers.value
+        if (index in list.indices && index != _currentServerIndex.value) {
+            _currentServerIndex.value = index
+            playUrlInternal(list[index].url)
+        }
+    }
+
+    private fun playUrlInternal(url: String) {
+        val mediaItem = MediaItem.fromUri(url)
         _selectedQuality.value = null
         exoPlayer.setMediaItem(mediaItem)
         exoPlayer.prepare()

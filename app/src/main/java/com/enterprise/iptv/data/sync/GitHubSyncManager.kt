@@ -23,37 +23,42 @@ class GitHubSyncManager @Inject constructor(
     private val okHttpClient: OkHttpClient
 ) {
     companion object {
-        // ضع هنا رابط ملف الـ JSON الخاص بك على GitHub (raw.githubusercontent.com)
         const val DEFAULT_REMOTE_CONFIG_URL =
-            "https://raw.githubusercontent.com/your-username/iptv-config/main/default_channels.json"
+            "https://raw.githubusercontent.com/Sa4aC3n/iptv-player-app/main/app/src/main/assets/default_channels.json"
         const val DEFAULT_PLAYLIST_ID = "official_default"
     }
 
     /**
-     * تشغيل فوري من الـ Assets عند أول فتح للتطبيق بدون أي اتصال بالإنترنت
+     * تشغيل فوري من الـ Assets عند أول فتح للتطبيق أو عند توفر إصدار أحدث محلياً
      */
     suspend fun seedFromAssetsIfEmpty(): Boolean = withContext(Dispatchers.IO) {
-        val count = channelDao.getChannelsCount()
-        if (count > 0 && syncPreferenceManager.localChannelsVersion > 0) {
-            return@withContext false // البيانات محملة مسبقاً
-        }
-
         try {
             val inputStream = context.assets.open("default_channels.json")
             val jsonString = BufferedReader(InputStreamReader(inputStream)).use { it.readText() }
             val json = JSONObject(jsonString)
             val version = json.optInt("version", 1)
+            val count = channelDao.getChannelsCount()
+
+            if (count > 0 && syncPreferenceManager.localChannelsVersion >= version) {
+                return@withContext false // البيانات محملة مسبقاً ومطابقة للإصدار
+            }
 
             val channelsArray = json.getJSONArray("channels")
             val channelEntities = mutableListOf<ChannelEntity>()
 
             for (i in 0 until channelsArray.length()) {
                 val obj = channelsArray.getJSONObject(i)
+                val backupUrlsArray = obj.optJSONArray("backup_urls")
+                val backupUrls = if (backupUrlsArray != null && backupUrlsArray.length() > 0) {
+                    (0 until backupUrlsArray.length()).map { backupUrlsArray.getString(it) }.joinToString("||")
+                } else null
+
                 channelEntities.add(
                     ChannelEntity(
                         id = obj.getString("id"),
                         name = obj.getString("name"),
                         streamUrl = obj.getString("stream_url"),
+                        backupUrls = backupUrls,
                         logoUrl = obj.optString("logo_url", null),
                         groupTitle = obj.optString("category", "عام"),
                         countryCode = obj.optString("country", null),
@@ -64,6 +69,7 @@ class GitHubSyncManager @Inject constructor(
                 )
             }
 
+            channelDao.deletePlaylistChannels(DEFAULT_PLAYLIST_ID)
             channelDao.insertChannels(channelEntities)
             syncPreferenceManager.localChannelsVersion = version
             syncPreferenceManager.lastSyncTimestamp = System.currentTimeMillis()
@@ -105,11 +111,17 @@ class GitHubSyncManager @Inject constructor(
 
                 for (i in 0 until channelsArray.length()) {
                     val obj = channelsArray.getJSONObject(i)
+                    val backupUrlsArray = obj.optJSONArray("backup_urls")
+                    val backupUrls = if (backupUrlsArray != null && backupUrlsArray.length() > 0) {
+                        (0 until backupUrlsArray.length()).map { backupUrlsArray.getString(it) }.joinToString("||")
+                    } else null
+
                     updatedEntities.add(
                         ChannelEntity(
                             id = obj.getString("id"),
                             name = obj.getString("name"),
                             streamUrl = obj.getString("stream_url"),
+                            backupUrls = backupUrls,
                             logoUrl = obj.optString("logo_url", null),
                             groupTitle = obj.optString("category", "عام"),
                             countryCode = obj.optString("country", null),
