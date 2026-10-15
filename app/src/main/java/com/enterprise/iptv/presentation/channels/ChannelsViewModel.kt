@@ -44,6 +44,8 @@ class ChannelsViewModel @Inject constructor(
     private val _currentChannel = MutableStateFlow<Channel?>(null)
     private val _recordState = MutableStateFlow<RecordState>(RecordState.Idle)
     private val _isImporting = MutableStateFlow(false)
+    private val _isFullscreen = MutableStateFlow(false)
+    val isFullscreen = _isFullscreen.asStateFlow()
 
     private var recordingJob: Job? = null
 
@@ -131,6 +133,14 @@ class ChannelsViewModel @Inject constructor(
         viewModelScope.launch {
             repository.toggleFavorite(channel.id, !channel.isFavorite)
         }
+    }
+
+    fun toggleFullscreen() {
+        _isFullscreen.value = !_isFullscreen.value
+    }
+
+    fun setFullscreen(enabled: Boolean) {
+        _isFullscreen.value = enabled
     }
 
     fun importM3uPlaylist(url: String) {
