@@ -1,0 +1,61 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="288dp"
+    android:height="288dp"
+    android:viewportWidth="288"
+    android:viewportHeight="288">
+
+    <!-- TV Screen Outline with Rounded Corners -->
+    <path
+        android:pathData="M48,64 H240 A16,16 0 0,1 256,80 V200 A16,16 0 0,1 240,216 H48 A16,16 0 0,1 32,200 V80 A16,16 0 0,1 48,64 Z"
+        android:strokeWidth="10"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:startX="32"
+                android:startY="64"
+                android:endX="256"
+                android:endY="216"
+                android:type="linear">
+                <item android:color="#00E5FF" android:offset="0.0" />
+                <item android:color="#3F51B5" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- TV Stand Base -->
+    <path
+        android:pathData="M112,240 H176 M144,216 V240"
+        android:strokeWidth="8"
+        android:strokeColor="#00E5FF"
+        android:strokeLineCap="round" />
+
+    <!-- Play Triangle (Live Streaming Center) -->
+    <path
+        android:pathData="M126,112 L182,148 L126,184 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="126"
+                android:startY="112"
+                android:endX="182"
+                android:endY="184"
+                android:type="linear">
+                <item android:color="#00E5FF" android:offset="0.0" />
+                <item android:color="#FF1744" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Broadcast Signal Waves (Top Right) -->
+    <path
+        android:pathData="M196,44 A24,24 0 0,1 220,68"
+        android:strokeWidth="6"
+        android:strokeColor="#FF1744"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M184,32 A40,40 0 0,1 232,80"
+        android:strokeWidth="6"
+        android:strokeColor="#00E5FF"
+        android:strokeLineCap="round" />
+</vector>
