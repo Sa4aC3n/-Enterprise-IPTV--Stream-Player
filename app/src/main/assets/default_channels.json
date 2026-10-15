@@ -1,5 +1,5 @@
 ﻿{
-    "version":  7,
+    "version":  8,
     "last_updated":  "2026-10-15",
     "channels":  [
                      {
@@ -3583,6 +3583,138 @@
                          "country":  "EG",
                          "stream_url":  "https://live.majestic-tv.net/hls/drama/index.m3u8",
                          "logo_url":  "https://i.imgur.com/G5Zk31q.png"
+                     },
+                     {
+                         "id":  "ch2_egypt",
+                         "category":  "عام وترفيه",
+                         "name":  "القناة الثانية المصرية",
+                         "backup_urls":  [
+
+                                         ],
+                         "language":  "ar",
+                         "country":  "EG",
+                         "stream_url":  "https://nilesat.live/ch2/index.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/EgyptianTV2.eg.png"
+                     },
+                     {
+                         "id":  "alexandria_tv",
+                         "category":  "عام وترفيه",
+                         "name":  "قناة الإسكندرية (الثالثة)",
+                         "backup_urls":  [
+
+                                         ],
+                         "language":  "ar",
+                         "country":  "EG",
+                         "stream_url":  "https://nilesat.live/alexandria/index.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/AlexandriaTV.eg.png"
+                     },
+                     {
+                         "id":  "delta_tv",
+                         "category":  "عام وترفيه",
+                         "name":  "قناة الدلتا (الرابعة)",
+                         "backup_urls":  [
+
+                                         ],
+                         "language":  "ar",
+                         "country":  "EG",
+                         "stream_url":  "https://nilesat.live/delta/index.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/DeltaTV.eg.png"
+                     },
+                     {
+                         "id":  "thebes_tv",
+                         "category":  "عام وترفيه",
+                         "name":  "قناة طيبة (الخامسة)",
+                         "backup_urls":  [
+
+                                         ],
+                         "language":  "ar",
+                         "country":  "EG",
+                         "stream_url":  "https://nilesat.live/thebes/index.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/ThebesTV.eg.png"
+                     },
+                     {
+                         "id":  "said_tv",
+                         "category":  "عام وترفيه",
+                         "name":  "قناة الصعيد (السادسة)",
+                         "backup_urls":  [
+
+                                         ],
+                         "language":  "ar",
+                         "country":  "EG",
+                         "stream_url":  "https://nilesat.live/said/index.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/AlSaeedTV.eg.png"
+                     },
+                     {
+                         "id":  "canal_tv",
+                         "category":  "عام وترفيه",
+                         "name":  "قناة القنال (السابعة)",
+                         "backup_urls":  [
+
+                                         ],
+                         "language":  "ar",
+                         "country":  "EG",
+                         "stream_url":  "https://nilesat.live/canal/index.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/CanalTV.eg.png"
+                     },
+                     {
+                         "id":  "nile_tv",
+                         "category":  "عام وترفيه",
+                         "name":  "قناة نايل تي في (الثامنة)",
+                         "backup_urls":  [
+
+                                         ],
+                         "language":  "ar",
+                         "country":  "EG",
+                         "stream_url":  "https://nilesat.live/niletv/index.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/NileTVInternational.eg.png"
+                     },
+                     {
+                         "id":  "nile_drama",
+                         "category":  "مسلسلات",
+                         "name":  "قناة النيل للدراما",
+                         "backup_urls":  [
+                                             "http://livecdnh2.tvanywhere.ae/hls/nile_drama/02.m3u8"
+                                         ],
+                         "language":  "ar",
+                         "country":  "EG",
+                         "stream_url":  "https://nilesat.live/niledrama/index.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/NileDrama.eg.png"
+                     },
+                     {
+                         "id":  "nile_news",
+                         "category":  "أخبار",
+                         "name":  "قناة النيل للأخبار",
+                         "backup_urls":  [
+                                             "http://149.100.19.226:8001/play/Nile_News"
+                                         ],
+                         "language":  "ar",
+                         "country":  "EG",
+                         "stream_url":  "https://nilesat.live/nilenews/index.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/NileNews.eg.png"
+                     },
+                     {
+                         "id":  "nile_cinema",
+                         "category":  "أفلام",
+                         "name":  "قناة النيل للأفلام",
+                         "backup_urls":  [
+                                             "http://livestreaming5.onlinehorizons.net/hls-live/NTNNileCinema/_definst_/liveevent/livestream.m3u8"
+                                         ],
+                         "language":  "ar",
+                         "country":  "EG",
+                         "stream_url":  "https://nilesat.live/nilecinema/index.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/NileCinema.eg.png"
+                     },
+                     {
+                         "id":  "esc_egypt",
+                         "category":  "عام وترفيه",
+                         "name":  "القناة المصرية الفضائية (ESC)",
+                         "backup_urls":  [
+                                             "http://185.9.2.18/chid_247/index.m3u8"
+                                         ],
+                         "language":  "ar",
+                         "country":  "EG",
+                         "stream_url":  "https://nilesat.live/esc/index.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/AlMasriyah.eg.png"
                      }
                  ]
 }
