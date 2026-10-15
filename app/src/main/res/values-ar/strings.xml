@@ -1,0 +1,21 @@
+<resources>
+    <string name="app_name">تلفزيون المحترفين IPTV</string>
+    <string name="all_categories">الكل</string>
+    <string name="category_cartoons">كرتون وأطفال</string>
+    <string name="category_movies">أفلام</string>
+    <string name="category_series">مسلسلات</string>
+    <string name="category_news">أخبار</string>
+    <string name="category_sports">رياضة</string>
+    <string name="search_hint">ابحث عن اسم القناة أو الدولة...</string>
+    <string name="no_channels_found">لم يتم العثور على أي قنوات</string>
+    <string name="add_playlist">إضافة قائمة M3U جديدة</string>
+    <string name="playlist_url_hint">أدخل رابط ملف M3U أو M3U8</string>
+    <string name="btn_save">حفظ القائمة</string>
+    <string name="btn_cancel">إلغاء</string>
+    <string name="btn_start_record">تسجيل</string>
+    <string name="btn_stop_record">إيقاف</string>
+    <string name="recording_active">جاري تسجيل البث المباشر (DVR)...</string>
+    <string name="recording_ready">التسجيل المباشر جاهز</string>
+    <string name="recording_saved">تم حفظ الفيديو بنجاح في مجلد الأفلام</string>
+    <string name="error_stream_failed">تعذر تشغيل البث. يرجى التحقق من الاتصال بالإنترنت.</string>
+</resources>
