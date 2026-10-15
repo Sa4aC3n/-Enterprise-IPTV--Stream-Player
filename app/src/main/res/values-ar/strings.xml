@@ -1,12 +1,15 @@
 <resources>
     <string name="app_name">تلفزيون المحترفين IPTV</string>
-    <string name="all_categories">الكل</string>
+    <string name="all_categories">جميع التصنيفات</string>
+    <string name="all_countries">جميع الدول</string>
+    <string name="select_category">التصنيف</string>
+    <string name="select_country">الدولة</string>
     <string name="category_cartoons">كرتون وأطفال</string>
     <string name="category_movies">أفلام</string>
     <string name="category_series">مسلسلات</string>
     <string name="category_news">أخبار</string>
     <string name="category_sports">رياضة</string>
-    <string name="search_hint">ابحث عن اسم القناة أو الدولة...</string>
+    <string name="search_hint">ابحث عن القناة...</string>
     <string name="no_channels_found">لم يتم العثور على أي قنوات</string>
     <string name="add_playlist">إضافة قائمة M3U جديدة</string>
     <string name="playlist_url_hint">أدخل رابط ملف M3U أو M3U8</string>
@@ -18,4 +21,9 @@
     <string name="recording_ready">التسجيل المباشر جاهز</string>
     <string name="recording_saved">تم حفظ الفيديو بنجاح في مجلد الأفلام</string>
     <string name="error_stream_failed">تعذر تشغيل البث. يرجى التحقق من الاتصال بالإنترنت.</string>
+    <string name="quality_auto">تلقائي (حسب سرعة النت)</string>
+    <string name="dialog_select_quality">اختر جودة البث المتاحة</string>
+    <string name="btn_fullscreen">ملء الشاشة</string>
+    <string name="btn_mute">كتم/تشغيل الصوت</string>
+    <string name="screen_fit">أبعاد الشاشة</string>
 </resources>
