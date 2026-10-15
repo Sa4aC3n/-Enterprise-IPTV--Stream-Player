@@ -1,5 +1,5 @@
 ﻿{
-    "version":  5,
+    "version":  6,
     "last_updated":  "2026-10-15",
     "channels":  [
                      {
@@ -3394,6 +3394,177 @@
                          "category":  "إسلامية",
                          "country":  "YE",
                          "language":  "ar"
+                     },
+                     {
+                         "id":  "mehwar_tv",
+                         "name":  "قناة المحور الفضائية",
+                         "logo_url":  "https://i.imgur.com/mehwar_logo.png",
+                         "country":  "EG",
+                         "language":  "ar",
+                         "category":  "عام وترفيه",
+                         "stream_url":  "https://mehwartv-live.ercdn.net/mehwartv/mehwartv.m3u8"
+                     },
+                     {
+                         "id":  "al_arabiya",
+                         "name":  "العربية",
+                         "logo_url":  "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Al_Arabiya_Logo.svg/512px-Al_Arabiya_Logo.svg.png",
+                         "country":  "AE",
+                         "language":  "ar",
+                         "category":  "أخبار",
+                         "stream_url":  "https://live.alarabiya.net/alarabiya/alarabiya.m3u8"
+                     },
+                     {
+                         "id":  "nat_geo_ad",
+                         "name":  "ناشيونال جيوغرافيك أبوظبي",
+                         "logo_url":  "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/National_Geographic_Abu_Dhabi_logo.png/512px-National_Geographic_Abu_Dhabi_logo.png",
+                         "country":  "AE",
+                         "language":  "ar",
+                         "category":  "وثائقيات",
+                         "stream_url":  "https://admedia-channels.akamaized.net/hls/live/2210817/NatGeoAbuDhabiHD/index.m3u8"
+                     },
+                     {
+                         "id":  "cnbc_arabia",
+                         "name":  "سي إن بي سي عربية",
+                         "logo_url":  "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/CNBC_logo.svg/512px-CNBC_logo.svg.png",
+                         "country":  "AE",
+                         "language":  "ar",
+                         "category":  "أخبار",
+                         "stream_url":  "https://live.cnbcarabia.com/hls/live/2024883/cnbcarabia/index.m3u8"
+                     },
+                     {
+                         "id":  "makkah_tv_main",
+                         "name":  "قناة مكة الفضائية (رئيسي)",
+                         "logo_url":  "https://i.imgur.com/9wO4e2M.png",
+                         "country":  "SA",
+                         "language":  "ar",
+                         "category":  "إسلامية",
+                         "stream_url":  "https://live.makhtv.net/hls/makkah/index.m3u8"
+                     },
+                     {
+                         "id":  "makkah_tv_alt",
+                         "name":  "قناة مكة الفضائية (سيرفر بديل)",
+                         "logo_url":  "https://i.imgur.com/9wO4e2M.png",
+                         "country":  "SA",
+                         "language":  "ar",
+                         "category":  "إسلامية",
+                         "stream_url":  "https://stream.media.islamway.net/live/makkah/playlist.m3u8"
+                     },
+                     {
+                         "id":  "zad_tv_main",
+                         "name":  "قناة زاد الفضائية (رئيسي)",
+                         "logo_url":  "https://zadgroup.net/wp-content/uploads/2021/04/zad-tv-logo.png",
+                         "country":  "SA",
+                         "language":  "ar",
+                         "category":  "إسلامية",
+                         "stream_url":  "https://live.zadgroup.net/zad/index.m3u8"
+                     },
+                     {
+                         "id":  "zad_tv_alt",
+                         "name":  "قناة زاد الفضائية (سيرفر بديل)",
+                         "logo_url":  "https://zadgroup.net/wp-content/uploads/2021/04/zad-tv-logo.png",
+                         "country":  "SA",
+                         "language":  "ar",
+                         "category":  "إسلامية",
+                         "stream_url":  "https://cdn.zad.tv/live/zadtv/playlist.m3u8"
+                     },
+                     {
+                         "id":  "ahlu_alquran",
+                         "name":  "قناة أهل القرآن الفضائية",
+                         "logo_url":  "https://i.imgur.com/G5Zk31q.png",
+                         "country":  "SA",
+                         "language":  "ar",
+                         "category":  "إسلامية",
+                         "stream_url":  "https://cdn.ahlu.tv/live/ahglutv/playlist.m3u8"
+                     },
+                     {
+                         "id":  "eyyaka_naabudou",
+                         "name":  "قناة إياك نعبد الفضائية",
+                         "logo_url":  "https://i.imgur.com/8QdYQZ1.png",
+                         "country":  "SA",
+                         "language":  "ar",
+                         "category":  "إسلامية",
+                         "stream_url":  "https://live.eyyakanaabudou.tv/live/eyyakanaabudou/playlist.m3u8"
+                     },
+                     {
+                         "id":  "islam_channel",
+                         "name":  "قناة إسلام شانيل (Islam Channel)",
+                         "logo_url":  "https://upload.wikimedia.org/wikipedia/en/thumb/f/f6/Islam_Channel_logo.png/320px-Islam_Channel_logo.png",
+                         "country":  "GB",
+                         "language":  "ar",
+                         "category":  "إسلامية",
+                         "stream_url":  "https://live.islamchannel.tv/hls/islamchannel/index.m3u8"
+                     },
+                     {
+                         "id":  "quran_kareem_alt",
+                         "name":  "قناة القرآن الكريم (مكة - سيرفر بديل)",
+                         "logo_url":  "https://upload.wikimedia.org/wikipedia/ar/d/d4/Quran_tv.png",
+                         "country":  "SA",
+                         "language":  "ar",
+                         "category":  "إسلامية",
+                         "stream_url":  "https://live.makhtv.net/hls/quran/index.m3u8"
+                     },
+                     {
+                         "id":  "sunnah_nabawia_alt",
+                         "name":  "قناة السنة النبوية (المدينة - سيرفر بديل)",
+                         "logo_url":  "https://upload.wikimedia.org/wikipedia/ar/e/e0/Sunnah_tv.png",
+                         "country":  "SA",
+                         "language":  "ar",
+                         "category":  "إسلامية",
+                         "stream_url":  "https://stream.media.islamway.net/live/sunnah/playlist.m3u8"
+                     },
+                     {
+                         "id":  "egypt_ch1",
+                         "name":  "القناة الأولى المصرية",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/EgyptianTV1.eg.png",
+                         "country":  "EG",
+                         "language":  "ar",
+                         "category":  "عام وترفيه",
+                         "stream_url":  "https://nilesat.live/ch1/index.m3u8"
+                     },
+                     {
+                         "id":  "al_nas_tv",
+                         "name":  "قناة الناس الفضائية (مصر)",
+                         "logo_url":  "https://i.imgur.com/G5Zk31q.png",
+                         "country":  "EG",
+                         "language":  "ar",
+                         "category":  "إسلامية",
+                         "stream_url":  "https://youtech.live/live/alnas/playlist.m3u8"
+                     },
+                     {
+                         "id":  "al_rahma_tv",
+                         "name":  "قناة الرحمة الفضائية (رئيسي)",
+                         "logo_url":  "https://i.imgur.com/9wO4e2M.png",
+                         "country":  "EG",
+                         "language":  "ar",
+                         "category":  "إسلامية",
+                         "stream_url":  "https://live.alrahma.tv/hls/alrahmatv/index.m3u8"
+                     },
+                     {
+                         "id":  "al_rahma_tv_alt",
+                         "name":  "قناة الرحمة الفضائية (سيرفر بديل)",
+                         "logo_url":  "https://i.imgur.com/9wO4e2M.png",
+                         "country":  "EG",
+                         "language":  "ar",
+                         "category":  "إسلامية",
+                         "stream_url":  "https://stream.alrahma.tv/live/smil:alrahma.smil/playlist.m3u8"
+                     },
+                     {
+                         "id":  "al_aqsa_live",
+                         "name":  "البث المباشر من المسجد الأقصى المبارك",
+                         "logo_url":  "https://i.imgur.com/9wO4e2M.png",
+                         "country":  "PS",
+                         "language":  "ar",
+                         "category":  "إسلامية",
+                         "stream_url":  "https://makkahlive.org/hls/aqsa/index.m3u8"
+                     },
+                     {
+                         "id":  "hajj_live",
+                         "name":  "البث المباشر لشعائر الحج والعمرة",
+                         "logo_url":  "https://upload.wikimedia.org/wikipedia/ar/d/d4/Quran_tv.png",
+                         "country":  "SA",
+                         "language":  "ar",
+                         "category":  "إسلامية",
+                         "stream_url":  "https://makkahlive.org/hls/hajj/index.m3u8"
                      }
                  ]
 }
