@@ -1,12 +1,15 @@
 <resources>
     <string name="app_name">Enterprise IPTV</string>
-    <string name="all_categories">All</string>
+    <string name="all_categories">All Categories</string>
+    <string name="all_countries">All Countries</string>
+    <string name="select_category">Category</string>
+    <string name="select_country">Country</string>
     <string name="category_cartoons">Cartoons &amp; Kids</string>
     <string name="category_movies">Movies</string>
     <string name="category_series">Series</string>
     <string name="category_news">News</string>
     <string name="category_sports">Sports</string>
-    <string name="search_hint">Search channels or countries...</string>
+    <string name="search_hint">Search channels...</string>
     <string name="no_channels_found">No channels found</string>
     <string name="add_playlist">Add M3U Playlist</string>
     <string name="playlist_url_hint">Enter M3U / M3U8 URL</string>
@@ -18,4 +21,9 @@
     <string name="recording_ready">DVR Stream Recording Ready</string>
     <string name="recording_saved">Recording saved to Movies folder</string>
     <string name="error_stream_failed">Failed to load stream. Please check connection.</string>
+    <string name="quality_auto">Auto (Adaptive)</string>
+    <string name="dialog_select_quality">Select Stream Quality</string>
+    <string name="btn_fullscreen">Fullscreen</string>
+    <string name="btn_mute">Mute/Unmute</string>
+    <string name="screen_fit">Aspect Ratio</string>
 </resources>
