@@ -1,7 +1,34 @@
 ﻿{
-    "version":  4,
+    "version":  5,
     "last_updated":  "2026-10-15",
     "channels":  [
+                     {
+                         "id":  "on_tv_channel",
+                         "name":  "قناة ON (بث رئيسي)",
+                         "stream_url":  "http://95.170.215.124/live/disk1/ontv/playlist.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/ON.eg.png",
+                         "category":  "عام وترفيه",
+                         "country":  "EG",
+                         "language":  "ar"
+                     },
+                     {
+                         "id":  "on_tv_server2",
+                         "name":  "قناة ON (سيرفر بديل)",
+                         "stream_url":  "https://bcovlive-a.akamaihd.net/ba3169004d40484b9ff29e194964c9e8/eu-west-1/6057955906001/playlist.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/ON.eg.png",
+                         "category":  "عام وترفيه",
+                         "country":  "EG",
+                         "language":  "ar"
+                     },
+                     {
+                         "id":  "on_drama_channel",
+                         "name":  "قناة ON Drama (دراما)",
+                         "stream_url":  "http://95.170.215.124/live/disk1/ON_Drama/playlist.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/ONDrama.eg.png",
+                         "category":  "مسلسلات",
+                         "country":  "EG",
+                         "language":  "ar"
+                     },
                      {
                          "id":  "mbc_masr_drama",
                          "name":  "MBC مصر دراما (MBC Masr Drama)",
@@ -35,15 +62,6 @@
                          "stream_url":  "http://95.170.215.124/live/disk1/CBC_Drama/playlist.m3u8",
                          "logo_url":  "https://iptv-org.github.io/iptv/logos/CBCDrama.eg.png",
                          "category":  "مسلسلات",
-                         "country":  "EG",
-                         "language":  "ar"
-                     },
-                     {
-                         "id":  "dmc_channel",
-                         "name":  "قناة DMC (بث رئيسي HD)",
-                         "stream_url":  "https://bcovlive-a.akamaihd.net/ba3169004d40484b9ff29e194964c9e8/eu-west-1/6057955906001/playlist.m3u8",
-                         "logo_url":  "https://iptv-org.github.io/iptv/logos/DMC.eg.png",
-                         "category":  "عام وترفيه",
                          "country":  "EG",
                          "language":  "ar"
                      },
