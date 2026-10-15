@@ -1,7 +1,61 @@
 ﻿{
-    "version":  3,
+    "version":  4,
     "last_updated":  "2026-10-15",
     "channels":  [
+                     {
+                         "id":  "mbc_masr_drama",
+                         "name":  "MBC مصر دراما (MBC Masr Drama)",
+                         "stream_url":  "https://shd-gcp-live.edgenextcdn.net/live/bitmovin-mbc-masr-drama/567b703c19ede6598222de81b0e4508b/index.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/MBCMasrDrama.eg.png",
+                         "category":  "مسلسلات",
+                         "country":  "EG",
+                         "language":  "ar"
+                     },
+                     {
+                         "id":  "mbc_masr_2",
+                         "name":  "MBC مصر 2 (MBC Masr 2)",
+                         "stream_url":  "https://shd-gcp-live.edgenextcdn.net/live/bitmovin-mbc-masr-2/754931856515075b0aabf0e583495c68/index.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/MBCMasr2.eg.png",
+                         "category":  "عام وترفيه",
+                         "country":  "EG",
+                         "language":  "ar"
+                     },
+                     {
+                         "id":  "cbc_channel",
+                         "name":  "قناة CBC (بث رئيسي)",
+                         "stream_url":  "https://flu.systemnet.tv/CBC/index.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/CBCEgypt.eg.png",
+                         "category":  "عام وترفيه",
+                         "country":  "EG",
+                         "language":  "ar"
+                     },
+                     {
+                         "id":  "cbc_drama_channel",
+                         "name":  "قناة CBC دراما (سيرفر بديل)",
+                         "stream_url":  "http://95.170.215.124/live/disk1/CBC_Drama/playlist.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/CBCDrama.eg.png",
+                         "category":  "مسلسلات",
+                         "country":  "EG",
+                         "language":  "ar"
+                     },
+                     {
+                         "id":  "dmc_channel",
+                         "name":  "قناة DMC (بث رئيسي HD)",
+                         "stream_url":  "https://bcovlive-a.akamaihd.net/ba3169004d40484b9ff29e194964c9e8/eu-west-1/6057955906001/playlist.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/DMC.eg.png",
+                         "category":  "عام وترفيه",
+                         "country":  "EG",
+                         "language":  "ar"
+                     },
+                     {
+                         "id":  "dmc_channel_server2",
+                         "name":  "قناة DMC (سيرفر بديل)",
+                         "stream_url":  "http://95.170.215.124/live/disk1/dmc/anevia1/dmc.m3u8",
+                         "logo_url":  "https://iptv-org.github.io/iptv/logos/DMC.eg.png",
+                         "category":  "عام وترفيه",
+                         "country":  "EG",
+                         "language":  "ar"
+                     },
                      {
                          "id":  "egypt_quran",
                          "name":  "مصر قرآن كريم (Egypt Quran)",
@@ -223,15 +277,6 @@
                          "name":  "MBC Masr",
                          "stream_url":  "https://shd-gcp-live.edgenextcdn.net/live/bitmovin-mbc-masr/956eac069c78a35d47245db6cdbb1575/index.m3u8",
                          "logo_url":  "https://iptv-org.github.io/iptv/logos/MBCMasr.eg.png",
-                         "category":  "عام وترفيه",
-                         "country":  "EG",
-                         "language":  "ar"
-                     },
-                     {
-                         "id":  "MBCMasr2.eg",
-                         "name":  "MBC Masr 2",
-                         "stream_url":  "https://shd-gcp-live.edgenextcdn.net/live/bitmovin-mbc-masr-2/754931856515075b0aabf0e583495c68/index.m3u8",
-                         "logo_url":  "https://iptv-org.github.io/iptv/logos/MBCMasr2.eg.png",
                          "category":  "عام وترفيه",
                          "country":  "EG",
                          "language":  "ar"
@@ -3067,15 +3112,6 @@
                          "name":  "Maraya",
                          "stream_url":  "https://shd-amg-fast.edgenextcdn.net/tx008/playlist.m3u8",
                          "logo_url":  "https://iptv-org.github.io/iptv/logos/Maraya.sa.png",
-                         "category":  "مسلسلات",
-                         "country":  "SA",
-                         "language":  "ar"
-                     },
-                     {
-                         "id":  "MBCMasrDrama.sa",
-                         "name":  "MBC Masr Drama",
-                         "stream_url":  "https://shd-gcp-live.edgenextcdn.net/live/bitmovin-mbc-masr-drama/567b703c19ede6598222de81b0e4508b/index.m3u8",
-                         "logo_url":  "https://iptv-org.github.io/iptv/logos/MBCMasrDrama.sa.png",
                          "category":  "مسلسلات",
                          "country":  "SA",
                          "language":  "ar"
