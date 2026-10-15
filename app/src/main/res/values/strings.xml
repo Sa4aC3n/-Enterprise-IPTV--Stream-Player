@@ -1,0 +1,21 @@
+<resources>
+    <string name="app_name">Enterprise IPTV</string>
+    <string name="all_categories">All</string>
+    <string name="category_cartoons">Cartoons &amp; Kids</string>
+    <string name="category_movies">Movies</string>
+    <string name="category_series">Series</string>
+    <string name="category_news">News</string>
+    <string name="category_sports">Sports</string>
+    <string name="search_hint">Search channels or countries...</string>
+    <string name="no_channels_found">No channels found</string>
+    <string name="add_playlist">Add M3U Playlist</string>
+    <string name="playlist_url_hint">Enter M3U / M3U8 URL</string>
+    <string name="btn_save">Save</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="btn_start_record">Record</string>
+    <string name="btn_stop_record">Stop</string>
+    <string name="recording_active">Recording Stream (DVR)...</string>
+    <string name="recording_ready">DVR Stream Recording Ready</string>
+    <string name="recording_saved">Recording saved to Movies folder</string>
+    <string name="error_stream_failed">Failed to load stream. Please check connection.</string>
+</resources>
