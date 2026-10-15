@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "last_updated": "2026-10-15",
+  "channels": [
+    {
+      "id": "aljazeera_ar",
+      "name": "قناة الجزيرة الإخبارية",
+      "stream_url": "https://live-hls-web-aje.getaj.net/AJE/03.m3u8",
+      "logo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Aljazeera_Logo.svg/200px-Aljazeera_Logo.svg.png",
+      "category": "أخبار",
+      "country": "QA",
+      "language": "ar"
+    },
+    {
+      "id": "alarabiya_news",
+      "name": "العربية الحدث",
+      "stream_url": "https://live.alarabiya.net/alarabiapublish/alhadath.smil/playlist.m3u8",
+      "logo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/Al_Arabiya_logo.svg/200px-Al_Arabiya_logo.svg.png",
+      "category": "أخبار",
+      "country": "AE",
+      "language": "ar"
+    },
+    {
+      "id": "bbc_arabic",
+      "name": "BBC News عربي",
+      "stream_url": "https://stream.live.vc.bbcmedia.co.uk/hls/live/2024884/bbc_arabic_tv/master.m3u8",
+      "logo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/BBC.svg/200px-BBC.svg.png",
+      "category": "أخبار",
+      "country": "GB",
+      "language": "ar"
+    },
+    {
+      "id": "dw_arabic",
+      "name": "DW عربية",
+      "stream_url": "https://dwamdstream104.akamaized.net/hls/live/2015530/dwstream104/index.m3u8",
+      "logo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/Deutsche_Welle_Logo.svg/200px-Deutsche_Welle_Logo.svg.png",
+      "category": "وثائقيات",
+      "country": "DE",
+      "language": "ar"
+    },
+    {
+      "id": "france24_ar",
+      "name": "فرانس 24 عربي",
+      "stream_url": "https://f24hls-i.akamaihd.net/hls/live/221193/F24_AR_HLS/master_500.m3u8",
+      "logo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/Logo_France_24.svg/200px-Logo_France_24.svg.png",
+      "category": "أخبار",
+      "country": "FR",
+      "language": "ar"
+    },
+    {
+      "id": "quran_tv",
+      "name": "قناة القرآن الكريم (مكة المكرمة)",
+      "stream_url": "https://stream.sauditv.sa/hls/quran/index.m3u8",
+      "logo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Quran_TV_Saudi_Logo.png/200px-Quran_TV_Saudi_Logo.png",
+      "category": "إسلامية",
+      "country": "SA",
+      "language": "ar"
+    },
+    {
+      "id": "sunnah_tv",
+      "name": "قناة السنة النبوية (المدينة المنورة)",
+      "stream_url": "https://stream.sauditv.sa/hls/sunnah/index.m3u8",
+      "logo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Sunnah_TV_Saudi_Logo.png/200px-Sunnah_TV_Saudi_Logo.png",
+      "category": "إسلامية",
+      "country": "SA",
+      "language": "ar"
+    },
+    {
+      "id": "kids_cartoons_public",
+      "name": "كرتون أطفال (تعليمي وترفيهي)",
+      "stream_url": "https://amg01448-cinedigm-retrocrush-samsungus-e3c30.amagi.tv/playlist.m3u8",
+      "logo_url": "https://cdn-icons-png.flaticon.com/512/3176/3176366.png",
+      "category": "كرتون وأطفال",
+      "country": "US",
+      "language": "en"
+    },
+    {
+      "id": "nasa_tv",
+      "name": "NASA TV (علوم وفضاء)",
+      "stream_url": "https://ntv1.akamaized.net/hls/live/2014075/NASA-NTV1-HLS/master.m3u8",
+      "logo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/NASA_logo.svg/200px-NASA_logo.svg.png",
+      "category": "وثائقيات",
+      "country": "US",
+      "language": "en"
+    }
+  ]
+}
