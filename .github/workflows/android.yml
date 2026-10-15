@@ -26,7 +26,7 @@ jobs:
         gradle-version: '8.10.2'
 
     - name: Build Release Bundle (AAB) & APK
-      run: gradle bundleRelease assembleRelease --no-daemon
+      run: gradle :app:bundleRelease :app:assembleRelease --stacktrace --no-daemon
 
     - name: Upload Production AAB Artifact (For Google Play)
       uses: actions/upload-artifact@v4
@@ -34,7 +34,7 @@ jobs:
         name: app-release-aab
         path: app/build/outputs/bundle/release/*.aab
 
-    - name: Upload Production APK Artifact (For Direct Testing)
+    - name: Upload Production APK Artifact (For Testing)
       uses: actions/upload-artifact@v4
       with:
         name: app-release-apk
