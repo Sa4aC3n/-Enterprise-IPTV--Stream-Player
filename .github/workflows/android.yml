@@ -9,6 +9,7 @@ jobs:
   build:
     name: Build Production AAB & APK
     runs-on: ubuntu-latest
+    permissions: write-all
 
     steps:
     - name: Checkout Repository
@@ -55,20 +56,38 @@ jobs:
     - name: Build Release Bundle (AAB) & APK
       run: gradle :app:bundleRelease :app:assembleRelease --stacktrace --no-daemon
 
+    - name: Publish Official GitHub Release (Permanent & Quota-Free)
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        TAG="v1.0.0-vc2-run${{ github.run_number }}"
+        gh release create "$TAG" \
+          app/build/outputs/bundle/release/*.aab \
+          app/build/outputs/apk/release/*.apk \
+          upload-keystore.jks \
+          --title "Enterprise IPTV v1.0.0 (VersionCode 2)" \
+          --notes "Production Release build targeting API 36 with full R8 DEX optimization." || true
+
     - name: Upload Production AAB Artifact (For Google Play)
       uses: actions/upload-artifact@v4
+      continue-on-error: true
       with:
         name: app-release-aab
         path: app/build/outputs/bundle/release/*.aab
+        retention-days: 1
 
     - name: Upload Production APK Artifact (For Testing)
       uses: actions/upload-artifact@v4
+      continue-on-error: true
       with:
         name: app-release-apk
         path: app/build/outputs/apk/release/*.apk
+        retention-days: 1
 
     - name: Upload Release Keystore Artifact
       uses: actions/upload-artifact@v4
+      continue-on-error: true
       with:
         name: upload-keystore
         path: upload-keystore.jks
+        retention-days: 1
