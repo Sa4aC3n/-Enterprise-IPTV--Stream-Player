@@ -1659,7 +1659,7 @@ fun DualFilterDropdowns(
             modifier = Modifier.weight(1f)
         ) {
             OutlinedTextField(
-                value = selectedCategory ?: stringResource(R.string.filter_all_categories),
+                value = selectedCategory ?: stringResource(R.string.all_categories),
                 onValueChange = {},
                 readOnly = true,
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
@@ -1691,7 +1691,7 @@ fun DualFilterDropdowns(
                 modifier = Modifier.background(DarkCard)
             ) {
                 DropdownMenuItem(
-                    text = { Text(stringResource(R.string.filter_all_categories), fontWeight = FontWeight.Bold) },
+                    text = { Text(stringResource(R.string.all_categories), fontWeight = FontWeight.Bold) },
                     onClick = {
                         onCategorySelect(null)
                         categoryExpanded = false
@@ -1918,7 +1918,7 @@ fun AddPlaylistDialog(
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = AccentTeal, contentColor = Color.Black)
             ) {
-                Text(stringResource(R.string.btn_confirm))
+                Text(stringResource(R.string.btn_save))
             }
         },
         dismissButton = {
