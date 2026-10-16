@@ -217,8 +217,24 @@ class PlayerEngine @Inject constructor(
         }
     }
 
+    fun play() {
+        exoPlayer.play()
+    }
+
     fun pause() {
         exoPlayer.pause()
+    }
+
+    fun togglePlayPause() {
+        if (exoPlayer.isPlaying) {
+            exoPlayer.pause()
+        } else {
+            exoPlayer.play()
+        }
+    }
+
+    fun setResizeModeDirect(mode: Int) {
+        _resizeMode.value = mode
     }
 
     fun release() {
