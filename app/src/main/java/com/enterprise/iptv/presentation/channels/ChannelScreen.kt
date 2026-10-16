@@ -5,40 +5,26 @@ import android.widget.FrameLayout
 import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
 import androidx.compose.animation.*
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.PlayerView
@@ -49,21 +35,9 @@ import com.enterprise.iptv.domain.recorder.RecordState
 import com.enterprise.iptv.presentation.player.PlaybackStatus
 import com.enterprise.iptv.presentation.player.PlayerEngine
 import com.enterprise.iptv.presentation.player.VideoQuality
-import com.enterprise.iptv.presentation.theme.*
-
-/**
- * علامات التبويب الرئيسية في شريط التنقل السفلي المودرن (Netflix / Shahid Style)
- */
-enum class AppTab(
-    val title: String,
-    val unselectedIcon: ImageVector,
-    val selectedIcon: ImageVector
-) {
-    HOME("الرئيسية", Icons.Outlined.Home, Icons.Filled.Home),
-    LIVE("البث المباشر", Icons.Outlined.LiveTv, Icons.Filled.LiveTv),
-    FAVORITES("المفضلة", Icons.Outlined.FavoriteBorder, Icons.Filled.Favorite),
-    SEARCH("البحث", Icons.Outlined.Search, Icons.Filled.Search)
-}
+import com.enterprise.iptv.presentation.theme.AccentTeal
+import com.enterprise.iptv.presentation.theme.DarkSurface
+import com.enterprise.iptv.presentation.theme.LiveRed
 
 /**
  * تحويل كود الدولة المكون من حرفين (ISO-3166-1 alpha-2) إلى إيموجي علم الدولة مباشرة
@@ -88,7 +62,6 @@ fun ChannelScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val isFullscreen by viewModel.isFullscreen.collectAsState()
-    var currentTab by rememberSaveable { mutableStateOf(AppTab.HOME) }
     var showAddDialog by remember { mutableStateOf(false) }
 
     // الرجوع من وضع ملء الشاشة بزر الرجوع في الهاتف
@@ -99,46 +72,37 @@ fun ChannelScreen(
     Scaffold(
         topBar = {
             if (!isFullscreen) {
-                ModernTopBar(
-                    onAddPlaylistClick = { showAddDialog = true }
+                TopAppBar(
+                    title = { Text(stringResource(R.string.app_name), fontWeight = FontWeight.Bold) },
+                    actions = {
+                        IconButton(onClick = { showAddDialog = true }) {
+                            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_playlist))
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = DarkSurface,
+                        titleContentColor = Color.White,
+                        actionIconContentColor = AccentTeal
+                    )
                 )
             }
         },
-        bottomBar = {
-            if (!isFullscreen) {
-                ModernBottomNavBar(
-                    currentTab = currentTab,
-                    onTabSelected = { currentTab = it }
-                )
-            }
-        },
-        containerColor = DarkBackground,
         modifier = modifier
     ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(if (isFullscreen) PaddingValues(0.dp) else paddingValues)
-                .background(DarkBackground)
         ) {
             when (val state = uiState) {
                 is ChannelsUiState.Loading -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator(color = AccentTeal, strokeWidth = 3.dp)
-                            Spacer(Modifier.height(16.dp))
-                            Text(
-                                text = "جاري تحميل البث والقنوات...",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = TextSecondary
-                            )
-                        }
+                        CircularProgressIndicator(color = AccentTeal)
                     }
                 }
                 is ChannelsUiState.Success -> {
-                    CinematicContent(
+                    AdaptiveContent(
                         state = state,
-                        currentTab = currentTab,
                         playerEngine = viewModel.playerEngine,
                         isFullscreen = isFullscreen,
                         onToggleFullscreen = { viewModel.toggleFullscreen() },
@@ -171,145 +135,9 @@ fun ChannelScreen(
     }
 }
 
-/**
- * شريط التطبيق العلوي الزجاجي الفاخر
- */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ModernTopBar(
-    onAddPlaylistClick: () -> Unit
-) {
-    Surface(
-        color = GlassSurface,
-        tonalElevation = 6.dp,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // شارة لوجو نيونية أنيقة
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(NeonCyan, NeonBlue)
-                            )
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Tv,
-                        contentDescription = null,
-                        tint = Color.Black,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                Spacer(Modifier.width(10.dp))
-                Column {
-                    Text(
-                        text = stringResource(R.string.app_name),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color.White
-                    )
-                    Text(
-                        text = "LIVE STREAMING • ENTERPRISE",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = AccentTeal,
-                        letterSpacing = 1.sp
-                    )
-                }
-            }
-
-            IconButton(
-                onClick = onAddPlaylistClick,
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .background(DarkCard)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = stringResource(R.string.add_playlist),
-                    tint = AccentTeal,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        }
-    }
-}
-
-/**
- * شريط التنقل السفلي المودرن الزجاجي (Netflix / Shahid Style)
- */
-@Composable
-fun ModernBottomNavBar(
-    currentTab: AppTab,
-    onTabSelected: (AppTab) -> Unit
-) {
-    Surface(
-        color = GlassSurface,
-        tonalElevation = 8.dp,
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(
-                width = 1.dp,
-                color = DarkBorder,
-                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
-            )
-    ) {
-        NavigationBar(
-            containerColor = Color.Transparent,
-            tonalElevation = 0.dp,
-            modifier = Modifier.height(68.dp)
-        ) {
-            AppTab.values().forEach { tab ->
-                val isSelected = currentTab == tab
-                NavigationBarItem(
-                    selected = isSelected,
-                    onClick = { onTabSelected(tab) },
-                    icon = {
-                        Icon(
-                            imageVector = if (isSelected) tab.selectedIcon else tab.unselectedIcon,
-                            contentDescription = tab.title,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    },
-                    label = {
-                        Text(
-                            text = tab.title,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                        )
-                    },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = Color.Black,
-                        selectedTextColor = AccentTeal,
-                        indicatorColor = AccentTeal,
-                        unselectedIconColor = TextSecondary,
-                        unselectedTextColor = TextSecondary
-                    )
-                )
-            }
-        }
-    }
-}
-
-/**
- * الحاوية التفاعلية السينمائية مع دعم المشغل والشاشات المتقدمة
- */
-@Composable
-fun CinematicContent(
+fun AdaptiveContent(
     state: ChannelsUiState.Success,
-    currentTab: AppTab,
     playerEngine: PlayerEngine,
     isFullscreen: Boolean,
     onToggleFullscreen: () -> Unit,
@@ -322,11 +150,15 @@ fun CinematicContent(
     onStopRecord: () -> Unit
 ) {
     val configuration = LocalConfiguration.current
-    val isTabletOrLandscape = configuration.screenWidthDp >= 600
+    val isTablet = configuration.screenWidthDp >= 600
 
+    // في وضع ملء الشاشة يملأ المشغل كامل الشاشة
     if (isFullscreen) {
-        // وضع ملء الشاشة الكامل
-        Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+        ) {
             VideoPlayerContainer(
                 playerEngine = playerEngine,
                 status = state.playbackStatus,
@@ -335,8 +167,11 @@ fun CinematicContent(
                 onToggleFullscreen = onToggleFullscreen
             )
         }
-    } else if (isTabletOrLandscape) {
-        // تصميم الأجهزة اللوحية والوضع العرضي (Split Screen)
+        return
+    }
+
+    if (isTablet) {
+        // Tablet Side-by-Side (Master-Detail) Layout
         Row(modifier = Modifier.fillMaxSize()) {
             Box(
                 modifier = Modifier
@@ -352,31 +187,41 @@ fun CinematicContent(
                     onToggleFullscreen = onToggleFullscreen
                 )
             }
-            Box(
+            Column(
                 modifier = Modifier
-                    .weight(1.1f)
+                    .weight(1f)
                     .fillMaxHeight()
-                    .background(DarkBackground)
             ) {
-                TabContent(
-                    state = state,
-                    currentTab = currentTab,
-                    onChannelSelect = onChannelSelect,
-                    onFavoriteToggle = onFavoriteToggle,
+                RecordingBar(
+                    recordState = state.recordState,
+                    hasChannel = state.currentChannel != null,
+                    onStart = onStartRecord,
+                    onStop = onStopRecord
+                )
+                SearchBar(query = state.searchQuery, onQueryChange = onSearchChange)
+                DualFilterDropdowns(
+                    categories = state.categories,
+                    selectedCategory = state.selectedCategory,
+                    countries = state.countries,
+                    selectedCountry = state.selectedCountry,
                     onCategorySelect = onCategorySelect,
-                    onCountrySelect = onCountrySelect,
-                    onSearchChange = onSearchChange
+                    onCountrySelect = onCountrySelect
+                )
+                ChannelsList(
+                    channels = state.channels,
+                    currentChannel = state.currentChannel,
+                    onChannelSelect = onChannelSelect,
+                    onFavoriteToggle = onFavoriteToggle
                 )
             }
         }
     } else {
-        // تصميم الهواتف الذكية السينمائي الرأسي
+        // Phone Vertical Layout
         Column(modifier = Modifier.fillMaxSize()) {
-            // المشغل في الجزء العلوي بتصميم زجاجي عائم
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(230.dp)
+                    .height(240.dp)
                     .background(Color.Black)
             ) {
                 VideoPlayerContainer(
@@ -387,77 +232,24 @@ fun CinematicContent(
                     onToggleFullscreen = onToggleFullscreen
                 )
             }
-
-            // شريط التسجيل الحي الصوتي والمرئي
             RecordingBar(
                 recordState = state.recordState,
                 hasChannel = state.currentChannel != null,
                 onStart = onStartRecord,
                 onStop = onStopRecord
             )
-
-            // محتوى علامات التبويب (Home, Live, Favorites, Search)
-            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                TabContent(
-                    state = state,
-                    currentTab = currentTab,
-                    onChannelSelect = onChannelSelect,
-                    onFavoriteToggle = onFavoriteToggle,
-                    onCategorySelect = onCategorySelect,
-                    onCountrySelect = onCountrySelect,
-                    onSearchChange = onSearchChange
-                )
-            }
-        }
-    }
-}
-
-/**
- * تبديل المحتوى حسب علامة التبويب المختارة (Home / Live / Favorites / Search)
- */
-@Composable
-fun TabContent(
-    state: ChannelsUiState.Success,
-    currentTab: AppTab,
-    onChannelSelect: (Channel) -> Unit,
-    onFavoriteToggle: (Channel) -> Unit,
-    onCategorySelect: (String?) -> Unit,
-    onCountrySelect: (String?) -> Unit,
-    onSearchChange: (String) -> Unit
-) {
-    AnimatedContent(
-        targetState = currentTab,
-        transitionSpec = {
-            fadeIn(animationSpec = tween(220)) togetherWith fadeOut(animationSpec = tween(220))
-        },
-        label = "TabContentAnimation"
-    ) { tab ->
-        when (tab) {
-            AppTab.HOME -> HomeRailsView(
-                channels = state.channels,
-                currentChannel = state.currentChannel,
-                onChannelSelect = onChannelSelect,
-                onFavoriteToggle = onFavoriteToggle
-            )
-            AppTab.LIVE -> LiveTvFilterView(
-                state = state,
-                onChannelSelect = onChannelSelect,
-                onFavoriteToggle = onFavoriteToggle,
+            SearchBar(query = state.searchQuery, onQueryChange = onSearchChange)
+            DualFilterDropdowns(
+                categories = state.categories,
+                selectedCategory = state.selectedCategory,
+                countries = state.countries,
+                selectedCountry = state.selectedCountry,
                 onCategorySelect = onCategorySelect,
                 onCountrySelect = onCountrySelect
             )
-            AppTab.FAVORITES -> FavoritesView(
-                channels = state.channels.filter { it.isFavorite },
-                currentChannel = state.currentChannel,
-                onChannelSelect = onChannelSelect,
-                onFavoriteToggle = onFavoriteToggle
-            )
-            AppTab.SEARCH -> ModernSearchView(
-                query = state.searchQuery,
+            ChannelsList(
                 channels = state.channels,
                 currentChannel = state.currentChannel,
-                categories = state.categories,
-                onSearchChange = onSearchChange,
                 onChannelSelect = onChannelSelect,
                 onFavoriteToggle = onFavoriteToggle
             )
@@ -465,831 +257,6 @@ fun TabContent(
     }
 }
 
-/**
- * الشاشة الرئيسية بأسلوب Netflix & Shahid (Hero Spotlight + الأشرطة الأفقية Carousels)
- */
-@Composable
-fun HomeRailsView(
-    channels: List<Channel>,
-    currentChannel: Channel?,
-    onChannelSelect: (Channel) -> Unit,
-    onFavoriteToggle: (Channel) -> Unit
-) {
-    // اختيار القناة البارزة للبانر الرئيسي
-    val featuredChannel = currentChannel ?: channels.firstOrNull()
-
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 24.dp)
-    ) {
-        // 1. البانر الرئيسي السينمائي (Hero Spotlight)
-        if (featuredChannel != null) {
-            item {
-                HeroSpotlightBanner(
-                    channel = featuredChannel,
-                    onPlayClick = { onChannelSelect(featuredChannel) },
-                    onFavoriteToggle = { onFavoriteToggle(featuredChannel) }
-                )
-            }
-        }
-
-        // 2. شريط القنوات المميزة / الأكثر رواجاً
-        val topPicks = channels.take(15)
-        if (topPicks.isNotEmpty()) {
-            item {
-                ChannelCarouselSection(
-                    title = "🔥 الأكثر مشاهدة ومختارات البث",
-                    channels = topPicks,
-                    currentChannel = currentChannel,
-                    onChannelSelect = onChannelSelect,
-                    onFavoriteToggle = onFavoriteToggle
-                )
-            }
-        }
-
-        // 3. شريط باقة قنوات القرآن الكريم والإسلامية
-        val religious = channels.filter { it.groupTitle.contains("إسلام") || it.groupTitle.contains("دين") || it.groupTitle.contains("قرآن") }
-        if (religious.isNotEmpty()) {
-            item {
-                ChannelCarouselSection(
-                    title = "🕌 باقة القرآن الكريم والقنوات الإسلامية",
-                    channels = religious,
-                    currentChannel = currentChannel,
-                    onChannelSelect = onChannelSelect,
-                    onFavoriteToggle = onFavoriteToggle
-                )
-            }
-        }
-
-        // 4. شريط باقة الرياضة والمباريات
-        val sports = channels.filter { it.groupTitle.contains("رياض") }
-        if (sports.isNotEmpty()) {
-            item {
-                ChannelCarouselSection(
-                    title = "⚽ القنوات الرياضية والمباريات المباشرة",
-                    channels = sports,
-                    currentChannel = currentChannel,
-                    onChannelSelect = onChannelSelect,
-                    onFavoriteToggle = onFavoriteToggle
-                )
-            }
-        }
-
-        // 5. شريط باقة المسلسلات والأفلام
-        val dramaAndCinema = channels.filter { it.groupTitle.contains("مسلسل") || it.groupTitle.contains("فيلم") || it.groupTitle.contains("أفلام") || it.groupTitle.contains("دراما") }
-        if (dramaAndCinema.isNotEmpty()) {
-            item {
-                ChannelCarouselSection(
-                    title = "🎬 مسلسلات وسينما (Shahid & Netflix)",
-                    channels = dramaAndCinema,
-                    currentChannel = currentChannel,
-                    onChannelSelect = onChannelSelect,
-                    onFavoriteToggle = onFavoriteToggle
-                )
-            }
-        }
-
-        // 6. شريط باقة الأخبار والحدث
-        val news = channels.filter { it.groupTitle.contains("أخبار") || it.groupTitle.contains("خبر") }
-        if (news.isNotEmpty()) {
-            item {
-                ChannelCarouselSection(
-                    title = "📰 قنوات الأخبار والحدث المباشر",
-                    channels = news,
-                    currentChannel = currentChannel,
-                    onChannelSelect = onChannelSelect,
-                    onFavoriteToggle = onFavoriteToggle
-                )
-            }
-        }
-
-        // 7. باقة القنوات المصرية الرسمية والإقليمية
-        val egyptian = channels.filter { it.countryCode == "EG" }
-        if (egyptian.isNotEmpty()) {
-            item {
-                ChannelCarouselSection(
-                    title = "🇪🇬 باقة القنوات المصرية الرسمية والأقاليم",
-                    channels = egyptian,
-                    currentChannel = currentChannel,
-                    onChannelSelect = onChannelSelect,
-                    onFavoriteToggle = onFavoriteToggle
-                )
-            }
-        }
-
-        // 8. شريط الوثائقيات والطبيعة
-        val docs = channels.filter { it.groupTitle.contains("وثائق") }
-        if (docs.isNotEmpty()) {
-            item {
-                ChannelCarouselSection(
-                    title = "🌍 وثائقيات واستكشاف",
-                    channels = docs,
-                    currentChannel = currentChannel,
-                    onChannelSelect = onChannelSelect,
-                    onFavoriteToggle = onFavoriteToggle
-                )
-            }
-        }
-
-        // 9. شريط الأطفال والكرتون
-        val kids = channels.filter { it.groupTitle.contains("أطفال") || it.groupTitle.contains("كرتون") }
-        if (kids.isNotEmpty()) {
-            item {
-                ChannelCarouselSection(
-                    title = "👶 أطفال وكرتون",
-                    channels = kids,
-                    currentChannel = currentChannel,
-                    onChannelSelect = onChannelSelect,
-                    onFavoriteToggle = onFavoriteToggle
-                )
-            }
-        }
-    }
-}
-
-/**
- * البانر الرئيسي السينمائي المتوهج (Hero Spotlight)
- */
-@Composable
-fun HeroSpotlightBanner(
-    channel: Channel,
-    onPlayClick: () -> Unit,
-    onFavoriteToggle: () -> Unit
-) {
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkCard),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 10.dp)
-            .border(1.dp, GlassBorder, RoundedCornerShape(16.dp))
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            DarkCard,
-                            DarkBackground
-                        )
-                    )
-                )
-                .padding(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // صورة القناة داخل إطار زجاجي فخم
-                Box(
-                    modifier = Modifier
-                        .size(80.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(DarkElevated)
-                        .border(1.dp, DarkBorder, RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    AsyncImage(
-                        model = channel.logoUrl,
-                        contentDescription = channel.name,
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier
-                            .size(60.dp)
-                            .padding(4.dp)
-                    )
-                }
-
-                Spacer(Modifier.width(16.dp))
-
-                // تفاصيل القناة وأزرار التشغيل
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        // مؤشر LIVE النابض
-                        LivePulsingBadge()
-                        Spacer(Modifier.width(8.dp))
-                        // شارة السيرفرات في حال توفرها
-                        if (channel.backupUrls.isNotEmpty()) {
-                            Surface(
-                                shape = RoundedCornerShape(4.dp),
-                                color = AccentTeal.copy(alpha = 0.2f)
-                            ) {
-                                Text(
-                                    text = "${channel.backupUrls.size + 1} سيرفرات",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = AccentTeal,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(Modifier.height(6.dp))
-
-                    Text(
-                        text = channel.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    Text(
-                        text = "${getCountryFlagEmoji(channel.countryCode)}  ${channel.groupTitle}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary
-                    )
-
-                    Spacer(Modifier.height(10.dp))
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        // زر تشغيل البث المباشر
-                        Button(
-                            onClick = onPlayClick,
-                            shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = AccentTeal,
-                                contentColor = Color.Black
-                            ),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
-                            modifier = Modifier.height(36.dp)
-                        ) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                text = "شاهد الآن",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-
-                        // زر المفضلة
-                        IconButton(
-                            onClick = onFavoriteToggle,
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(DarkElevated)
-                        ) {
-                            Icon(
-                                imageVector = if (channel.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                contentDescription = null,
-                                tint = if (channel.isFavorite) LiveRed else Color.LightGray,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-/**
- * شارة LIVE نابضة ومتحركة (Pulsing Live Badge)
- */
-@Composable
-fun LivePulsingBadge() {
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val alpha by infiniteTransition.animateFloat(
-        initialValue = 0.4f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "alpha"
-    )
-
-    Surface(
-        shape = RoundedCornerShape(4.dp),
-        color = LiveRed.copy(alpha = 0.2f),
-        border = androidx.compose.foundation.BorderStroke(1.dp, LiveRed.copy(alpha = alpha))
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(6.dp)
-                    .clip(CircleShape)
-                    .background(LiveRed.copy(alpha = alpha))
-            )
-            Spacer(Modifier.width(4.dp))
-            Text(
-                text = "مباشر LIVE",
-                style = MaterialTheme.typography.labelSmall,
-                color = LiveRed,
-                fontWeight = FontWeight.Bold,
-                fontSize = 10.sp
-            )
-        }
-    }
-}
-
-/**
- * شريط أفقي مصنف للقنوات (Horizontal Carousel Section)
- */
-@Composable
-fun ChannelCarouselSection(
-    title: String,
-    channels: List<Channel>,
-    currentChannel: Channel?,
-    onChannelSelect: (Channel) -> Unit,
-    onFavoriteToggle: (Channel) -> Unit
-) {
-    Column(modifier = Modifier.padding(vertical = 10.dp)) {
-        // عنوان الشريط
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-            Text(
-                text = "${channels.size} قناة",
-                style = MaterialTheme.typography.labelSmall,
-                color = TextMuted
-            )
-        }
-
-        // قائمة البطاقات الأفقية
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
-        ) {
-            items(channels, key = { it.id }) { channel ->
-                CinematicChannelCard(
-                    channel = channel,
-                    isPlaying = channel.id == currentChannel?.id,
-                    onClick = { onChannelSelect(channel) },
-                    onFavoriteToggle = { onFavoriteToggle(channel) }
-                )
-            }
-        }
-    }
-}
-
-/**
- * بطاقة القناة السينمائية بتصميم عالمي (16:9 Glassmorphic Poster)
- */
-@Composable
-fun CinematicChannelCard(
-    channel: Channel,
-    isPlaying: Boolean,
-    onClick: () -> Unit,
-    onFavoriteToggle: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val cardBorder = if (isPlaying) AccentTeal else DarkBorder
-    val borderWidth = if (isPlaying) 2.dp else 1.dp
-
-    Card(
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkCard),
-        modifier = modifier
-            .width(150.dp)
-            .height(130.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .border(borderWidth, cardBorder, RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            // محتوى البطاقة في المنتصف (شعار القناة)
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(12.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                AsyncImage(
-                    model = channel.logoUrl,
-                    contentDescription = channel.name,
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier
-                        .size(56.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                )
-            }
-
-            // الشارات العلوية (علم الدولة على اليمين وزر المفضلة على اليسار)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(6.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // علم الدولة
-                Text(
-                    text = getCountryFlagEmoji(channel.countryCode),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-
-                // زر المفضلة المصغر
-                IconButton(
-                    onClick = onFavoriteToggle,
-                    modifier = Modifier.size(24.dp)
-                ) {
-                    Icon(
-                        imageVector = if (channel.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                        contentDescription = null,
-                        tint = if (channel.isFavorite) LiveRed else Color.Gray,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            }
-
-            // شريط سفلي متدرج يحتوي على اسم القناة وشارة السيرفرات
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.95f))
-                        )
-                    )
-                    .padding(horizontal = 8.dp, vertical = 6.dp)
-            ) {
-                Column {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = channel.name,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = if (isPlaying) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isPlaying) AccentTeal else Color.White,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f)
-                        )
-                        if (isPlaying) {
-                            Box(
-                                modifier = Modifier
-                                    .size(6.dp)
-                                    .clip(CircleShape)
-                                    .background(AccentTeal)
-                            )
-                        }
-                    }
-
-                    if (channel.backupUrls.isNotEmpty()) {
-                        Text(
-                            text = "${channel.backupUrls.size + 1} سيرفر",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = AccentTeal,
-                            fontSize = 9.sp
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-/**
- * شاشة البث المباشر (LIVE TV) مع شبكة القنوات وتصفية التصنيفات والدول
- */
-@Composable
-fun LiveTvFilterView(
-    state: ChannelsUiState.Success,
-    onChannelSelect: (Channel) -> Unit,
-    onFavoriteToggle: (Channel) -> Unit,
-    onCategorySelect: (String?) -> Unit,
-    onCountrySelect: (String?) -> Unit
-) {
-    var isGridView by rememberSaveable { mutableStateOf(true) }
-
-    Column(modifier = Modifier.fillMaxSize()) {
-        // شريط أدوات التصفية المودرن
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "جميع القنوات (${state.channels.size})",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-
-            // زر التبديل بين عرض الشبكة والقائمة
-            IconButton(
-                onClick = { isGridView = !isGridView },
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(DarkCard)
-            ) {
-                Icon(
-                    imageVector = if (isGridView) Icons.Default.ViewList else Icons.Default.GridView,
-                    contentDescription = null,
-                    tint = AccentTeal,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        }
-
-        // القائمتان المنسدلتان للتصنيفات والدول
-        DualFilterDropdowns(
-            categories = state.categories,
-            selectedCategory = state.selectedCategory,
-            countries = state.countries,
-            selectedCountry = state.selectedCountry,
-            onCategorySelect = onCategorySelect,
-            onCountrySelect = onCountrySelect
-        )
-
-        Spacer(Modifier.height(4.dp))
-
-        if (state.channels.isEmpty()) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(
-                    text = stringResource(R.string.no_channels_found),
-                    color = TextMuted,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-        } else if (isGridView) {
-            // عرض الشبكة المودرن (2 أعمدة للهواتف)
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 140.dp),
-                contentPadding = PaddingValues(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                items(state.channels, key = { it.id }) { channel ->
-                    CinematicChannelCard(
-                        channel = channel,
-                        isPlaying = channel.id == state.currentChannel?.id,
-                        onClick = { onChannelSelect(channel) },
-                        onFavoriteToggle = { onFavoriteToggle(channel) },
-                        modifier = Modifier.fillMaxWidth().height(130.dp)
-                    )
-                }
-            }
-        } else {
-            // عرض القائمة السلسة
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 16.dp)
-            ) {
-                items(state.channels, key = { it.id }) { channel ->
-                    ModernListItem(
-                        channel = channel,
-                        isPlaying = channel.id == state.currentChannel?.id,
-                        onClick = { onChannelSelect(channel) },
-                        onFavoriteToggle = { onFavoriteToggle(channel) }
-                    )
-                }
-            }
-        }
-    }
-}
-
-/**
- * شاشة المفضلة (FAVORITES)
- */
-@Composable
-fun FavoritesView(
-    channels: List<Channel>,
-    currentChannel: Channel?,
-    onChannelSelect: (Channel) -> Unit,
-    onFavoriteToggle: (Channel) -> Unit
-) {
-    if (channels.isEmpty()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(32.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(
-                    imageVector = Icons.Default.FavoriteBorder,
-                    contentDescription = null,
-                    tint = TextMuted,
-                    modifier = Modifier.size(64.dp)
-                )
-                Spacer(Modifier.height(16.dp))
-                Text(
-                    text = "قائمة المفضلة فارغة",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = "انقر على رمز القلب ❤️ بجوار أي قناة لإضافتها إلى قنواتك المفضلة والوصول إليها بسرعة هنا.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary,
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
-    } else {
-        LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = 140.dp),
-            contentPadding = PaddingValues(14.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            items(channels, key = { it.id }) { channel ->
-                CinematicChannelCard(
-                    channel = channel,
-                    isPlaying = channel.id == currentChannel?.id,
-                    onClick = { onChannelSelect(channel) },
-                    onFavoriteToggle = { onFavoriteToggle(channel) },
-                    modifier = Modifier.fillMaxWidth().height(130.dp)
-                )
-            }
-        }
-    }
-}
-
-/**
- * شاشة البحث السريع والذكي (SEARCH)
- */
-@Composable
-fun ModernSearchView(
-    query: String,
-    channels: List<Channel>,
-    currentChannel: Channel?,
-    categories: List<String>,
-    onSearchChange: (String) -> Unit,
-    onChannelSelect: (Channel) -> Unit,
-    onFavoriteToggle: (Channel) -> Unit
-) {
-    Column(modifier = Modifier.fillMaxSize()) {
-        // شريط البحث المودرن
-        SearchBar(query = query, onQueryChange = onSearchChange)
-
-        // شرائح التصنيفات السريعة للنقر بنقرة واحدة
-        if (categories.isNotEmpty()) {
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(categories) { category ->
-                    FilterChip(
-                        selected = query.equals(category, ignoreCase = true),
-                        onClick = {
-                            if (query.equals(category, ignoreCase = true)) onSearchChange("")
-                            else onSearchChange(category)
-                        },
-                        label = { Text(category, style = MaterialTheme.typography.labelSmall) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            containerColor = DarkCard,
-                            selectedContainerColor = AccentTeal,
-                            selectedLabelColor = Color.Black
-                        )
-                    )
-                }
-            }
-        }
-
-        val filteredList = remember(query, channels) {
-            if (query.isBlank()) channels
-            else {
-                channels.filter {
-                    it.name.contains(query, ignoreCase = true) ||
-                    it.groupTitle.contains(query, ignoreCase = true) ||
-                    (it.countryCode?.contains(query, ignoreCase = true) == true)
-                }
-            }
-        }
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "نتائج البحث (${filteredList.size})",
-                style = MaterialTheme.typography.labelSmall,
-                color = TextSecondary
-            )
-        }
-
-        LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = 140.dp),
-            contentPadding = PaddingValues(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            items(filteredList, key = { it.id }) { channel ->
-                CinematicChannelCard(
-                    channel = channel,
-                    isPlaying = channel.id == currentChannel?.id,
-                    onClick = { onChannelSelect(channel) },
-                    onFavoriteToggle = { onFavoriteToggle(channel) },
-                    modifier = Modifier.fillMaxWidth().height(130.dp)
-                )
-            }
-        }
-    }
-}
-
-/**
- * عنصر القائمة المودرن
- */
-@Composable
-fun ModernListItem(
-    channel: Channel,
-    isPlaying: Boolean,
-    onClick: () -> Unit,
-    onFavoriteToggle: () -> Unit
-) {
-    val bg = if (isPlaying) AccentTeal.copy(alpha = 0.08f) else Color.Transparent
-
-    ListItem(
-        headlineContent = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = channel.name,
-                    fontWeight = if (isPlaying) FontWeight.Bold else FontWeight.Medium,
-                    color = if (isPlaying) AccentTeal else Color.White
-                )
-                if (channel.backupUrls.isNotEmpty()) {
-                    Spacer(Modifier.width(6.dp))
-                    Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = AccentTeal.copy(alpha = 0.2f)
-                    ) {
-                        Text(
-                            text = "${channel.backupUrls.size + 1} سيرفر",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = AccentTeal,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
-                }
-            }
-        },
-        supportingContent = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = getCountryFlagEmoji(channel.countryCode))
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    text = "${channel.groupTitle} ${channel.countryCode?.let { "• $it" } ?: ""}",
-                    color = TextSecondary,
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-        },
-        leadingContent = {
-            AsyncImage(
-                model = channel.logoUrl,
-                contentDescription = channel.name,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(DarkCard)
-            )
-        },
-        trailingContent = {
-            IconButton(onClick = onFavoriteToggle) {
-                Icon(
-                    imageVector = if (channel.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                    contentDescription = null,
-                    tint = if (channel.isFavorite) LiveRed else Color.Gray
-                )
-            }
-        },
-        colors = ListItemDefaults.colors(containerColor = bg),
-        modifier = Modifier.clickable(onClick = onClick)
-    )
-}
-
-/**
- * مشغل الفيديو مع لوحة التحكم العائمة الشفافة (Glassmorphic Video Player Container)
- */
 @Composable
 fun VideoPlayerContainer(
     playerEngine: PlayerEngine,
@@ -1329,13 +296,13 @@ fun VideoPlayerContainer(
             modifier = Modifier.fillMaxSize()
         )
 
-        // أزرار التحكم العائمة في مشغل الفيديو
+        // Overlay Controls (Top & Bottom Bars)
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(12.dp)
         ) {
-            // الشريط العلوي للمشغل: اسم القناة وأزرار الخيارات السريعة
+            // Top Bar: Channel Name & Quick Actions
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1346,11 +313,11 @@ fun VideoPlayerContainer(
                 if (channelName.isNotBlank()) {
                     Text(
                         text = channelName,
-                        style = MaterialTheme.typography.titleSmall,
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
                         modifier = Modifier
-                            .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(8.dp))
+                            .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     )
                 } else {
@@ -1361,7 +328,7 @@ fun VideoPlayerContainer(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    // زر تبديل السيرفر
+                    // زر تبديل السيرفر (في حال توفر سيرفرات بديلة)
                     if (servers.size > 1) {
                         AssistChip(
                             onClick = { showServerDialog = true },
@@ -1376,11 +343,11 @@ fun VideoPlayerContainer(
                             leadingIcon = {
                                 Icon(Icons.Default.Dns, contentDescription = null, tint = AccentTeal, modifier = Modifier.size(16.dp))
                             },
-                            colors = AssistChipDefaults.assistChipColors(containerColor = Color.Black.copy(alpha = 0.65f))
+                            colors = AssistChipDefaults.assistChipColors(containerColor = Color.Black.copy(alpha = 0.6f))
                         )
                     }
 
-                    // زر جودة البث
+                    // زر تبديل جودة البث (SD / HD / Auto)
                     AssistChip(
                         onClick = { showQualityDialog = true },
                         label = {
@@ -1394,15 +361,15 @@ fun VideoPlayerContainer(
                         leadingIcon = {
                             Icon(Icons.Default.HighQuality, contentDescription = null, tint = AccentTeal, modifier = Modifier.size(16.dp))
                         },
-                        colors = AssistChipDefaults.assistChipColors(containerColor = Color.Black.copy(alpha = 0.65f))
+                        colors = AssistChipDefaults.assistChipColors(containerColor = Color.Black.copy(alpha = 0.6f))
                     )
 
-                    // زر تغيير وضع الأبعاد (Fit / Zoom / Fill)
+                    // زر تغيير أبعاد الشاشة (Fit / Zoom / Fill)
                     IconButton(
                         onClick = { playerEngine.cycleResizeMode() },
                         modifier = Modifier
                             .size(36.dp)
-                            .background(Color.Black.copy(alpha = 0.65f), CircleShape)
+                            .background(Color.Black.copy(alpha = 0.6f), CircleShape)
                     ) {
                         Icon(
                             imageVector = Icons.Default.AspectRatio,
@@ -1412,12 +379,12 @@ fun VideoPlayerContainer(
                         )
                     }
 
-                    // زر ملء الشاشة
+                    // زر ملء الشاشة (Fullscreen)
                     IconButton(
                         onClick = onToggleFullscreen,
                         modifier = Modifier
                             .size(36.dp)
-                            .background(Color.Black.copy(alpha = 0.65f), CircleShape)
+                            .background(Color.Black.copy(alpha = 0.6f), CircleShape)
                     ) {
                         Icon(
                             imageVector = if (isFullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
@@ -1429,14 +396,15 @@ fun VideoPlayerContainer(
                 }
             }
 
-            // أسفل يمين المشغل: تحكم الصوت
+            // Bottom Right Bar: زر وأيقونة الصوت ومستوى الصوت
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(20.dp))
+                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(20.dp))
                     .padding(horizontal = 8.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // شريط تمرير الصوت (يظهر عند الضغط)
                 AnimatedVisibility(visible = showVolumeSlider) {
                     Slider(
                         value = volume,
@@ -1452,6 +420,7 @@ fun VideoPlayerContainer(
                     )
                 }
 
+                // أيقونة السماعة (كتم / رفع الصوت)
                 IconButton(
                     onClick = { playerEngine.toggleMute() },
                     modifier = Modifier.size(32.dp)
@@ -1469,6 +438,7 @@ fun VideoPlayerContainer(
                     )
                 }
 
+                // سهم صغير لإظهار/إخفاء السلايدر
                 IconButton(
                     onClick = { showVolumeSlider = !showVolumeSlider },
                     modifier = Modifier.size(24.dp)
@@ -1483,27 +453,28 @@ fun VideoPlayerContainer(
             }
         }
 
-        // إشارة التحميل أو الخطأ
+        // Buffering & Error Overlays
         if (status is PlaybackStatus.Buffering) {
-            CircularProgressIndicator(color = AccentTeal, strokeWidth = 3.dp)
+            CircularProgressIndicator(color = AccentTeal)
         } else if (status is PlaybackStatus.Error) {
             Text(
                 text = stringResource(R.string.error_stream_failed),
                 color = Color.White,
                 modifier = Modifier
-                    .background(Color.Black.copy(alpha = 0.8f), RoundedCornerShape(8.dp))
+                    .background(Color.Black.copy(alpha = 0.75f), RoundedCornerShape(8.dp))
                     .padding(12.dp)
             )
         }
     }
 
-    // نافذة اختيار جودة البث
+    // نافذة اختيار جودة البث المتاحة
     if (showQualityDialog) {
         AlertDialog(
             onDismissRequest = { showQualityDialog = false },
             title = { Text(stringResource(R.string.dialog_select_quality), fontWeight = FontWeight.Bold) },
             text = {
                 Column {
+                    // خيار الجودة التلقائية (Adaptive Auto)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1527,6 +498,7 @@ fun VideoPlayerContainer(
 
                     HorizontalDivider()
 
+                    // الجودات المتوفرة من البث (1080p, 720p, 480p, 360p...)
                     if (availableQualities.isEmpty()) {
                         Text(
                             text = "جاري الكشف عن جودات البث المتعددة...",
@@ -1572,7 +544,7 @@ fun VideoPlayerContainer(
         )
     }
 
-    // نافذة اختيار سيرفر البث
+    // نافذة اختيار سيرفر البث (في حال توفر بدائل)
     if (showServerDialog) {
         AlertDialog(
             onDismissRequest = { showServerDialog = false },
@@ -1649,133 +621,121 @@ fun DualFilterDropdowns(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 4.dp),
+            .padding(horizontal = 12.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // 1. القائمة المنسدلة للتصنيفات
+        // 1. القائمة المنسدلة للتصنيفات (Categories Dropdown)
         ExposedDropdownMenuBox(
             expanded = categoryExpanded,
-            onExpandedChange = { categoryExpanded = it },
+            onExpandedChange = { categoryExpanded = !categoryExpanded },
             modifier = Modifier.weight(1f)
         ) {
             OutlinedTextField(
                 value = selectedCategory ?: stringResource(R.string.all_categories),
                 onValueChange = {},
                 readOnly = true,
+                label = { Text(stringResource(R.string.select_category)) },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Category,
-                        contentDescription = null,
-                        tint = AccentTeal,
-                        modifier = Modifier.size(18.dp)
-                    )
-                },
+                leadingIcon = { Icon(Icons.Default.Category, contentDescription = null, tint = AccentTeal, modifier = Modifier.size(20.dp)) },
                 singleLine = true,
-                textStyle = MaterialTheme.typography.bodySmall,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = DarkCard,
-                    unfocusedContainerColor = DarkCard,
-                    focusedBorderColor = AccentTeal,
-                    unfocusedBorderColor = DarkBorder
-                ),
-                shape = RoundedCornerShape(10.dp),
                 modifier = Modifier
                     .menuAnchor()
-                    .fillMaxWidth()
+                    .fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = AccentTeal,
+                    unfocusedContainerColor = DarkSurface
+                )
             )
-
             ExposedDropdownMenu(
                 expanded = categoryExpanded,
                 onDismissRequest = { categoryExpanded = false },
-                modifier = Modifier.background(DarkCard)
+                modifier = Modifier.background(DarkSurface)
             ) {
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.all_categories), fontWeight = FontWeight.Bold) },
                     onClick = {
                         onCategorySelect(null)
                         categoryExpanded = false
-                    }
+                    },
+                    leadingIcon = { Icon(Icons.Default.DoneAll, contentDescription = null, tint = AccentTeal) }
                 )
-                HorizontalDivider()
                 categories.forEach { category ->
                     DropdownMenuItem(
-                        text = {
-                            Text(
-                                text = category,
-                                color = if (category == selectedCategory) AccentTeal else Color.White,
-                                fontWeight = if (category == selectedCategory) FontWeight.Bold else FontWeight.Normal
-                            )
-                        },
+                        text = { Text(category) },
                         onClick = {
                             onCategorySelect(category)
                             categoryExpanded = false
+                        },
+                        leadingIcon = {
+                            if (category == selectedCategory) {
+                                Icon(Icons.Default.Check, contentDescription = null, tint = AccentTeal)
+                            }
                         }
                     )
                 }
             }
         }
 
-        // 2. القائمة المنسدلة للدول
+        // 2. القائمة المنسدلة للدول مع أعلام الدول (Countries Dropdown with Flag Emojis)
         ExposedDropdownMenuBox(
             expanded = countryExpanded,
-            onExpandedChange = { countryExpanded = it },
+            onExpandedChange = { countryExpanded = !countryExpanded },
             modifier = Modifier.weight(1f)
         ) {
-            val countryDisplayName = if (selectedCountry != null) {
+            val countryText = if (selectedCountry != null) {
                 "${getCountryFlagEmoji(selectedCountry)} $selectedCountry"
             } else {
-                "🌐 جميع الدول"
+                stringResource(R.string.all_countries)
             }
 
             OutlinedTextField(
-                value = countryDisplayName,
+                value = countryText,
                 onValueChange = {},
                 readOnly = true,
+                label = { Text(stringResource(R.string.select_country)) },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = countryExpanded) },
+                leadingIcon = { Icon(Icons.Default.Public, contentDescription = null, tint = AccentTeal, modifier = Modifier.size(20.dp)) },
                 singleLine = true,
-                textStyle = MaterialTheme.typography.bodySmall,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = DarkCard,
-                    unfocusedContainerColor = DarkCard,
-                    focusedBorderColor = AccentTeal,
-                    unfocusedBorderColor = DarkBorder
-                ),
-                shape = RoundedCornerShape(10.dp),
                 modifier = Modifier
                     .menuAnchor()
-                    .fillMaxWidth()
+                    .fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = AccentTeal,
+                    unfocusedContainerColor = DarkSurface
+                )
             )
-
             ExposedDropdownMenu(
                 expanded = countryExpanded,
                 onDismissRequest = { countryExpanded = false },
-                modifier = Modifier.background(DarkCard)
+                modifier = Modifier.background(DarkSurface)
             ) {
                 DropdownMenuItem(
-                    text = { Text("🌐 جميع الدول", fontWeight = FontWeight.Bold) },
+                    text = { Text("🌐 ${stringResource(R.string.all_countries)}", fontWeight = FontWeight.Bold) },
                     onClick = {
                         onCountrySelect(null)
                         countryExpanded = false
                     }
                 )
-                HorizontalDivider()
-                countries.forEach { code ->
+                countries.forEach { country ->
                     DropdownMenuItem(
                         text = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(text = getCountryFlagEmoji(code), style = MaterialTheme.typography.bodyLarge)
-                                Spacer(Modifier.width(8.dp))
                                 Text(
-                                    text = code,
-                                    color = if (code == selectedCountry) AccentTeal else Color.White,
-                                    fontWeight = if (code == selectedCountry) FontWeight.Bold else FontWeight.Normal
+                                    text = getCountryFlagEmoji(country),
+                                    style = MaterialTheme.typography.titleMedium
                                 )
+                                Spacer(Modifier.width(8.dp))
+                                Text(country)
                             }
                         },
                         onClick = {
-                            onCountrySelect(code)
+                            onCountrySelect(country)
                             countryExpanded = false
+                        },
+                        leadingIcon = {
+                            if (country == selectedCountry) {
+                                Icon(Icons.Default.Check, contentDescription = null, tint = AccentTeal)
+                            }
                         }
                     )
                 }
@@ -1784,9 +744,101 @@ fun DualFilterDropdowns(
     }
 }
 
-/**
- * شريط التسجيل المباشر
- */
+@Composable
+fun ChannelsList(
+    channels: List<Channel>,
+    currentChannel: Channel?,
+    onChannelSelect: (Channel) -> Unit,
+    onFavoriteToggle: (Channel) -> Unit
+) {
+    if (channels.isEmpty()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(32.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = stringResource(R.string.no_channels_found),
+                style = MaterialTheme.typography.bodyLarge,
+                color = Color.Gray
+            )
+        }
+    } else {
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            items(channels, key = { it.id }) { channel ->
+                val isSelected = channel.id == currentChannel?.id
+                val flagEmoji = getCountryFlagEmoji(channel.countryCode)
+
+                ListItem(
+                    headlineContent = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = channel.name,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) AccentTeal else Color.White
+                            )
+                            if (channel.backupUrls.isNotEmpty()) {
+                                Spacer(Modifier.width(6.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = AccentTeal.copy(alpha = 0.2f)
+                                ) {
+                                    Text(
+                                        text = "${channel.backupUrls.size + 1} سيرفر",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = AccentTeal,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                        }
+                    },
+                    supportingContent = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = flagEmoji,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = "${channel.groupTitle} ${channel.countryCode?.let { "• $it" } ?: ""}",
+                                color = Color.Gray,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    },
+                    leadingContent = {
+                        AsyncImage(
+                            model = channel.logoUrl,
+                            contentDescription = channel.name,
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(DarkSurface)
+                        )
+                    },
+                    trailingContent = {
+                        IconButton(onClick = { onFavoriteToggle(channel) }) {
+                            Icon(
+                                imageVector = if (channel.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                contentDescription = null,
+                                tint = if (channel.isFavorite) LiveRed else Color.Gray
+                            )
+                        }
+                    },
+                    modifier = Modifier
+                        .clickable { onChannelSelect(channel) }
+                        .background(if (isSelected) AccentTeal.copy(alpha = 0.08f) else Color.Transparent)
+                )
+                HorizontalDivider(color = Color.DarkGray.copy(alpha = 0.3f))
+            }
+        }
+    }
+}
+
 @Composable
 fun RecordingBar(
     recordState: RecordState,
@@ -1842,53 +894,41 @@ fun RecordingBar(
                     containerColor = if (isRecording) LiveRed else AccentTeal,
                     contentColor = if (isRecording) Color.White else Color.Black
                 ),
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp),
-                shape = RoundedCornerShape(8.dp)
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp)
             ) {
                 Text(
                     text = if (isRecording) stringResource(R.string.btn_stop_record) else stringResource(R.string.btn_start_record),
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.labelMedium
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
     }
 }
 
-/**
- * شريط البحث المودرن
- */
 @Composable
 fun SearchBar(query: String, onQueryChange: (String) -> Unit) {
     OutlinedTextField(
         value = query,
         onValueChange = onQueryChange,
-        placeholder = { Text(stringResource(R.string.search_hint), style = MaterialTheme.typography.bodyMedium) },
-        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = AccentTeal) },
+        placeholder = { Text(stringResource(R.string.search_hint)) },
+        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray) },
         trailingIcon = {
             if (query.isNotEmpty()) {
                 IconButton(onClick = { onQueryChange("") }) {
-                    Icon(Icons.Default.Close, contentDescription = null, tint = Color.LightGray)
+                    Icon(Icons.Default.Close, contentDescription = null)
                 }
             }
         },
         singleLine = true,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 6.dp),
+            .padding(horizontal = 12.dp, vertical = 4.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = DarkCard,
-            unfocusedContainerColor = DarkCard,
-            focusedBorderColor = AccentTeal,
-            unfocusedBorderColor = DarkBorder
-        ),
-        shape = RoundedCornerShape(12.dp)
+            unfocusedContainerColor = DarkSurface
+        )
     )
 }
 
-/**
- * نافذة إضافة رابط قائمة M3U خارجية
- */
 @Composable
 fun AddPlaylistDialog(
     onDismiss: () -> Unit,
@@ -1906,17 +946,14 @@ fun AddPlaylistDialog(
                     onValueChange = { urlText = it },
                     placeholder = { Text(stringResource(R.string.playlist_url_hint)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp)
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         },
         confirmButton = {
             Button(
-                onClick = {
-                    if (urlText.isNotBlank()) onConfirm(urlText.trim())
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = AccentTeal, contentColor = Color.Black)
+                onClick = { if (urlText.isNotBlank()) onConfirm(urlText.trim()) },
+                enabled = urlText.isNotBlank()
             ) {
                 Text(stringResource(R.string.btn_save))
             }
