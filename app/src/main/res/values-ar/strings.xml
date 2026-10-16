@@ -15,6 +15,8 @@
     <string name="playlist_url_hint">أدخل رابط ملف M3U أو M3U8</string>
     <string name="btn_save">حفظ القائمة</string>
     <string name="btn_cancel">إلغاء</string>
+    <string name="btn_close">إغلاق</string>
+    <string name="btn_ok">حسناً</string>
     <string name="btn_start_record">تسجيل</string>
     <string name="btn_stop_record">إيقاف</string>
     <string name="recording_active">جاري تسجيل البث المباشر (DVR)...</string>
@@ -26,4 +28,28 @@
     <string name="btn_fullscreen">ملء الشاشة</string>
     <string name="btn_mute">كتم/تشغيل الصوت</string>
     <string name="screen_fit">أبعاد الشاشة</string>
+
+    <string name="tab_home">الرئيسية</string>
+    <string name="tab_live">البث المباشر</string>
+    <string name="tab_favorites">المفضلة</string>
+    <string name="tab_search">البحث</string>
+    <string name="tab_settings">الإعدادات</string>
+
+    <string name="settings_title">الإعدادات</string>
+    <string name="settings_app_info">معلومات التطبيق</string>
+    <string name="settings_version">الإصدار الحالي</string>
+    <string name="settings_check_update">التحقق من التحديث</string>
+    <string name="settings_latest_version_title">حالة إصدار التطبيق</string>
+    <string name="settings_latest_version_msg">أنت الآن تستخدم أحدث إصدار رقم (%1$s)</string>
+    <string name="settings_update_play_store">فحص التحديثات على Google Play</string>
+    <string name="settings_language">لغة التطبيق</string>
+    <string name="settings_language_desc">اختر لغة عرض التطبيق المفضلة</string>
+    <string name="settings_share_app">مشاركة التطبيق</string>
+    <string name="settings_share_desc">شارك تطبيق IPTV مع أصدقائك وعائلتك</string>
+    <string name="settings_rate_app">تقييم التطبيق</string>
+    <string name="settings_rate_desc">ادعمنا بتقييم 5 نجوم على متجر جوجل بلاي</string>
+    <string name="settings_dev_apps">تطبيقاتنا على متجر جوجل</string>
+    <string name="settings_dev_apps_desc">تصفح كافة التطبيقات والإصدارات الصادرة من فريقنا</string>
+    <string name="settings_privacy_policy">سياسة الخصوصية</string>
+    <string name="settings_terms_of_service">شروط الاستخدام</string>
 </resources>

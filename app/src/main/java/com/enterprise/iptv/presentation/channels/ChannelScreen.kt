@@ -1,13 +1,17 @@
 package com.enterprise.iptv.presentation.channels
 
 import android.app.Activity
+import android.content.Context
+import android.content.Intent
 import android.content.pm.ActivityInfo
+import android.net.Uri
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -22,6 +26,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -37,10 +42,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -60,17 +67,21 @@ import com.enterprise.iptv.presentation.theme.*
 import kotlinx.coroutines.delay
 
 /**
- * علامات التبويب الرئيسية في شريط التنقل السفلي المودرن (Netflix / Shahid Style)
+ * علامات التبويب الرئيسية في شريط التنقل السفلي المودرن مع دعم ثنائي اللغة (عربي / English)
  */
 enum class AppTab(
-    val title: String,
+    val titleAr: String,
+    val titleEn: String,
     val unselectedIcon: ImageVector,
     val selectedIcon: ImageVector
 ) {
-    HOME("الرئيسية", Icons.Outlined.Home, Icons.Filled.Home),
-    LIVE("البث المباشر", Icons.Outlined.LiveTv, Icons.Filled.LiveTv),
-    FAVORITES("المفضلة", Icons.Outlined.FavoriteBorder, Icons.Filled.Favorite),
-    SEARCH("البحث", Icons.Outlined.Search, Icons.Filled.Search)
+    HOME("الرئيسية", "Home", Icons.Outlined.Home, Icons.Filled.Home),
+    LIVE("البث المباشر", "Live TV", Icons.Outlined.LiveTv, Icons.Filled.LiveTv),
+    FAVORITES("المفضلة", "Favorites", Icons.Outlined.FavoriteBorder, Icons.Filled.Favorite),
+    SEARCH("البحث", "Search", Icons.Outlined.Search, Icons.Filled.Search),
+    SETTINGS("الإعدادات", "Settings", Icons.Outlined.Settings, Icons.Filled.Settings);
+
+    fun getTitle(isArabic: Boolean): String = if (isArabic) titleAr else titleEn
 }
 
 /**
@@ -98,6 +109,21 @@ fun ChannelScreen(
     val isFullscreen by viewModel.isFullscreen.collectAsState()
     val context = LocalContext.current
     val activity = context as? Activity
+    val prefs = remember { context.getSharedPreferences("iptv_prefs", Context.MODE_PRIVATE) }
+    var currentLanguage by remember { mutableStateOf(prefs.getString("app_lang", "ar") ?: "ar") }
+    val isArabic = currentLanguage == "ar"
+    val layoutDirection = if (isArabic) LayoutDirection.Rtl else LayoutDirection.Ltr
+
+    fun setAppLanguage(lang: String) {
+        currentLanguage = lang
+        prefs.edit().putString("app_lang", lang).apply()
+    }
+
+    fun toggleAppLanguage() {
+        val newLang = if (currentLanguage == "ar") "en" else "ar"
+        setAppLanguage(newLang)
+    }
+
     var currentTab by rememberSaveable { mutableStateOf(AppTab.HOME) }
     var showAddDialog by remember { mutableStateOf(false) }
 
@@ -132,76 +158,84 @@ fun ChannelScreen(
         viewModel.setFullscreen(false)
     }
 
-    Scaffold(
-        topBar = {
-            if (!isFullscreen) {
-                ModernTopBar(
-                    onAddPlaylistClick = { showAddDialog = true }
-                )
-            }
-        },
-        bottomBar = {
-            if (!isFullscreen) {
-                ModernBottomNavBar(
-                    currentTab = currentTab,
-                    onTabSelected = { currentTab = it }
-                )
-            }
-        },
-        containerColor = DarkBackground,
-        modifier = modifier
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(if (isFullscreen) PaddingValues(0.dp) else paddingValues)
-                .background(DarkBackground)
-        ) {
-            when (val state = uiState) {
-                is ChannelsUiState.Loading -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator(color = AccentTeal, strokeWidth = 3.dp)
-                            Spacer(Modifier.height(16.dp))
-                            Text(
-                                text = "جاري تحميل البث والقنوات...",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = TextSecondary
-                            )
+    CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
+        Scaffold(
+            topBar = {
+                if (!isFullscreen) {
+                    ModernTopBar(
+                        isArabic = isArabic,
+                        onToggleLanguage = { toggleAppLanguage() },
+                        onAddPlaylistClick = { showAddDialog = true }
+                    )
+                }
+            },
+            bottomBar = {
+                if (!isFullscreen) {
+                    ModernBottomNavBar(
+                        currentTab = currentTab,
+                        isArabic = isArabic,
+                        onTabSelected = { currentTab = it }
+                    )
+                }
+            },
+            containerColor = DarkBackground,
+            modifier = modifier
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(if (isFullscreen) PaddingValues(0.dp) else paddingValues)
+                    .background(DarkBackground)
+            ) {
+                when (val state = uiState) {
+                    is ChannelsUiState.Loading -> {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                CircularProgressIndicator(color = AccentTeal, strokeWidth = 3.dp)
+                                Spacer(Modifier.height(16.dp))
+                                Text(
+                                    text = if (isArabic) "جاري تحميل البث والقنوات..." else "Loading live streams...",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = TextSecondary
+                                )
+                            }
+                        }
+                    }
+                    is ChannelsUiState.Success -> {
+                        CinematicContent(
+                            state = state,
+                            currentTab = currentTab,
+                            isArabic = isArabic,
+                            currentLanguage = currentLanguage,
+                            onLanguageChange = { setAppLanguage(it) },
+                            playerEngine = viewModel.playerEngine,
+                            isFullscreen = isFullscreen,
+                            onToggleFullscreen = { viewModel.toggleFullscreen() },
+                            onChannelSelect = { viewModel.onChannelSelect(it) },
+                            onFavoriteToggle = { viewModel.toggleFavorite(it) },
+                            onCategorySelect = { viewModel.onCategorySelect(it) },
+                            onCountrySelect = { viewModel.onCountrySelect(it) },
+                            onSearchChange = { viewModel.onSearchQueryChange(it) },
+                            onStartRecord = { viewModel.startRecording() },
+                            onStopRecord = { viewModel.stopRecording() }
+                        )
+                    }
+                    is ChannelsUiState.Error -> {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(state.message, color = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
-                is ChannelsUiState.Success -> {
-                    CinematicContent(
-                        state = state,
-                        currentTab = currentTab,
-                        playerEngine = viewModel.playerEngine,
-                        isFullscreen = isFullscreen,
-                        onToggleFullscreen = { viewModel.toggleFullscreen() },
-                        onChannelSelect = { viewModel.onChannelSelect(it) },
-                        onFavoriteToggle = { viewModel.toggleFavorite(it) },
-                        onCategorySelect = { viewModel.onCategorySelect(it) },
-                        onCountrySelect = { viewModel.onCountrySelect(it) },
-                        onSearchChange = { viewModel.onSearchQueryChange(it) },
-                        onStartRecord = { viewModel.startRecording() },
-                        onStopRecord = { viewModel.stopRecording() }
+
+                if (showAddDialog) {
+                    AddPlaylistDialog(
+                        onDismiss = { showAddDialog = false },
+                        onConfirm = { url ->
+                            viewModel.importM3uPlaylist(url)
+                            showAddDialog = false
+                        }
                     )
                 }
-                is ChannelsUiState.Error -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(state.message, color = MaterialTheme.colorScheme.error)
-                    }
-                }
-            }
-
-            if (showAddDialog) {
-                AddPlaylistDialog(
-                    onDismiss = { showAddDialog = false },
-                    onConfirm = { url ->
-                        viewModel.importM3uPlaylist(url)
-                        showAddDialog = false
-                    }
-                )
             }
         }
     }
@@ -213,6 +247,8 @@ fun ChannelScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ModernTopBar(
+    isArabic: Boolean,
+    onToggleLanguage: () -> Unit,
     onAddPlaylistClick: () -> Unit
 ) {
     Surface(
@@ -265,30 +301,60 @@ fun ModernTopBar(
                 }
             }
 
-            IconButton(
-                onClick = onAddPlaylistClick,
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .background(DarkCard)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = stringResource(R.string.add_playlist),
-                    tint = AccentTeal,
-                    modifier = Modifier.size(20.dp)
-                )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // أيقونة صغيرة وأنيقة لتغيير لغة التطبيق بسرعة
+                Surface(
+                    onClick = onToggleLanguage,
+                    shape = RoundedCornerShape(20.dp),
+                    color = DarkCard,
+                    border = BorderStroke(1.dp, DarkBorder)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Language,
+                            contentDescription = "Language",
+                            tint = AccentTeal,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = if (isArabic) "عربي" else "EN",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                }
+
+                IconButton(
+                    onClick = onAddPlaylistClick,
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(DarkCard)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = stringResource(R.string.add_playlist),
+                        tint = AccentTeal,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
     }
 }
 
 /**
- * شريط التنقل السفلي المودرن الزجاجي (Netflix / Shahid Style)
+ * شريط التنقل السفلي المودرن الزجاجي مع دعم الترتيب التلقائي للغات (RTL في العربية و LTR في الإنجليزية)
  */
 @Composable
 fun ModernBottomNavBar(
     currentTab: AppTab,
+    isArabic: Boolean,
     onTabSelected: (AppTab) -> Unit
 ) {
     Surface(
@@ -312,21 +378,24 @@ fun ModernBottomNavBar(
         ) {
             AppTab.values().forEach { tab ->
                 val isSelected = currentTab == tab
+                val title = tab.getTitle(isArabic)
                 NavigationBarItem(
                     selected = isSelected,
                     onClick = { onTabSelected(tab) },
                     icon = {
                         Icon(
                             imageVector = if (isSelected) tab.selectedIcon else tab.unselectedIcon,
-                            contentDescription = tab.title,
+                            contentDescription = title,
                             modifier = Modifier.size(22.dp)
                         )
                     },
                     label = {
                         Text(
-                            text = tab.title,
+                            text = title,
                             style = MaterialTheme.typography.labelSmall,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     },
                     colors = NavigationBarItemDefaults.colors(
@@ -349,6 +418,9 @@ fun ModernBottomNavBar(
 fun CinematicContent(
     state: ChannelsUiState.Success,
     currentTab: AppTab,
+    isArabic: Boolean,
+    currentLanguage: String,
+    onLanguageChange: (String) -> Unit,
     playerEngine: PlayerEngine,
     isFullscreen: Boolean,
     onToggleFullscreen: () -> Unit,
@@ -400,6 +472,9 @@ fun CinematicContent(
                 TabContent(
                     state = state,
                     currentTab = currentTab,
+                    isArabic = isArabic,
+                    currentLanguage = currentLanguage,
+                    onLanguageChange = onLanguageChange,
                     onChannelSelect = onChannelSelect,
                     onFavoriteToggle = onFavoriteToggle,
                     onCategorySelect = onCategorySelect,
@@ -435,11 +510,14 @@ fun CinematicContent(
                 onStop = onStopRecord
             )
 
-            // محتوى علامات التبويب (Home, Live, Favorites, Search)
+            // محتوى علامات التبويب (Home, Live, Favorites, Search, Settings)
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 TabContent(
                     state = state,
                     currentTab = currentTab,
+                    isArabic = isArabic,
+                    currentLanguage = currentLanguage,
+                    onLanguageChange = onLanguageChange,
                     onChannelSelect = onChannelSelect,
                     onFavoriteToggle = onFavoriteToggle,
                     onCategorySelect = onCategorySelect,
@@ -452,12 +530,15 @@ fun CinematicContent(
 }
 
 /**
- * تبديل المحتوى حسب علامة التبويب المختارة (Home / Live / Favorites / Search)
+ * تبديل المحتوى حسب علامة التبويب المختارة (Home / Live / Favorites / Search / Settings)
  */
 @Composable
 fun TabContent(
     state: ChannelsUiState.Success,
     currentTab: AppTab,
+    isArabic: Boolean,
+    currentLanguage: String,
+    onLanguageChange: (String) -> Unit,
     onChannelSelect: (Channel) -> Unit,
     onFavoriteToggle: (Channel) -> Unit,
     onCategorySelect: (String?) -> Unit,
@@ -499,6 +580,11 @@ fun TabContent(
                 onSearchChange = onSearchChange,
                 onChannelSelect = onChannelSelect,
                 onFavoriteToggle = onFavoriteToggle
+            )
+            AppTab.SETTINGS -> SettingsView(
+                isArabic = isArabic,
+                currentLanguage = currentLanguage,
+                onLanguageChange = onLanguageChange
             )
         }
     }
@@ -1324,6 +1410,707 @@ fun ModernListItem(
         colors = ListItemDefaults.colors(containerColor = bg),
         modifier = Modifier.clickable(onClick = onClick)
     )
+}
+
+/**
+ * شاشة الإعدادات المودرن الفاخرة (Settings View)
+ */
+@Composable
+fun SettingsView(
+    isArabic: Boolean,
+    currentLanguage: String,
+    onLanguageChange: (String) -> Unit
+) {
+    val context = LocalContext.current
+    var showUpdateDialog by remember { mutableStateOf(false) }
+    var showPrivacyDialog by remember { mutableStateOf(false) }
+    var showTermsDialog by remember { mutableStateOf(false) }
+
+    val appVersionName = "1.0.0"
+    val playStoreAppUrl = "https://play.google.com/store/apps/details?id=com.enterprise.iptv"
+    val playStoreDevUrl = "https://play.google.com/store/apps/dev?id=6839550047456072292"
+
+    fun openUrl(url: String) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            // ignore
+        }
+    }
+
+    fun shareApp() {
+        try {
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                val text = if (isArabic) {
+                    "📺 شاهد أفضل باقات القنوات العربية والعالمية والبث المباشر مجاناً مع تطبيق Enterprise IPTV:\n$playStoreAppUrl"
+                } else {
+                    "📺 Watch the best live TV channels with Enterprise IPTV app:\n$playStoreAppUrl"
+                }
+                putExtra(Intent.EXTRA_SUBJECT, "Enterprise IPTV")
+                putExtra(Intent.EXTRA_TEXT, text)
+            }
+            context.startActivity(Intent.createChooser(shareIntent, if (isArabic) "مشاركة التطبيق" else "Share App"))
+        } catch (e: Exception) {
+            // ignore
+        }
+    }
+
+    fun rateApp() {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=com.enterprise.iptv"))
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            openUrl(playStoreAppUrl)
+        }
+    }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(DarkBackground)
+            .padding(horizontal = 16.dp),
+        contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // 1. بطاقة معلومات التطبيق والإصدار وأيقونة التحديث
+        item {
+            Surface(
+                color = GlassSurface,
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, DarkBorder),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(50.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(
+                                    Brush.linearGradient(listOf(NeonCyan, NeonBlue))
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Tv,
+                                contentDescription = null,
+                                tint = Color.Black,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+
+                        Spacer(Modifier.width(14.dp))
+
+                        Column {
+                            Text(
+                                text = stringResource(R.string.app_name),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = if (isArabic) "الإصدار الحالي: $appVersionName" else "Version: $appVersionName",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = TextSecondary
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(AccentTeal.copy(alpha = 0.2f))
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = "v1",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = AccentTeal
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // أيقونة فحص وتحديث التطبيق
+                    IconButton(
+                        onClick = { showUpdateDialog = true },
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(CircleShape)
+                            .background(DarkCard)
+                            .border(1.dp, DarkBorder, CircleShape)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.SystemUpdate,
+                            contentDescription = if (isArabic) "تحديث التطبيق" else "Update App",
+                            tint = AccentTeal,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // 2. بطاقة صفحة المطور وتطبيقاتنا على متجر جوجل
+        item {
+            Surface(
+                color = DarkCard,
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, AccentTeal.copy(alpha = 0.4f)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { openUrl(playStoreDevUrl) }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(46.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(GoldAmber.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Shop,
+                                contentDescription = null,
+                                tint = GoldAmber,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+
+                        Spacer(Modifier.width(14.dp))
+
+                        Column {
+                            Text(
+                                text = if (isArabic) "تطبيقاتنا على متجر جوجل" else "Our Apps on Google Play",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = if (isArabic) "اضغط هنا لتصفح كافة التطبيقات والإصدارات الأخيرة" else "Browse all our published apps and games",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary
+                            )
+                        }
+                    }
+
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = AccentTeal,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+        }
+
+        // 3. بطاقة لغة التطبيق (العربية والانجليزية)
+        item {
+            Surface(
+                color = GlassSurface,
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, DarkBorder),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Language,
+                            contentDescription = null,
+                            tint = AccentTeal,
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            text = if (isArabic) "لغة التطبيق (Language)" else "Application Language",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+
+                    Spacer(Modifier.height(14.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        // خيار اللغة العربية
+                        val isArSelected = currentLanguage == "ar"
+                        Surface(
+                            onClick = { onLanguageChange("ar") },
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isArSelected) AccentTeal.copy(alpha = 0.15f) else DarkCard,
+                            border = BorderStroke(1.dp, if (isArSelected) AccentTeal else DarkBorder),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(vertical = 12.dp, horizontal = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("🇸🇦", fontSize = 20.sp)
+                                    Spacer(Modifier.width(8.dp))
+                                    Column {
+                                        Text(
+                                            text = "العربية",
+                                            fontWeight = if (isArSelected) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (isArSelected) AccentTeal else Color.White,
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                        Text(
+                                            text = if (isArabic) "الافتراضية" else "Default",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = TextSecondary
+                                        )
+                                    }
+                                }
+                                RadioButton(
+                                    selected = isArSelected,
+                                    onClick = { onLanguageChange("ar") },
+                                    colors = RadioButtonDefaults.colors(selectedColor = AccentTeal)
+                                )
+                            }
+                        }
+
+                        // خيار اللغة الانجليزية
+                        val isEnSelected = currentLanguage == "en"
+                        Surface(
+                            onClick = { onLanguageChange("en") },
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isEnSelected) AccentTeal.copy(alpha = 0.15f) else DarkCard,
+                            border = BorderStroke(1.dp, if (isEnSelected) AccentTeal else DarkBorder),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(vertical = 12.dp, horizontal = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("🇺🇸", fontSize = 20.sp)
+                                    Spacer(Modifier.width(8.dp))
+                                    Column {
+                                        Text(
+                                            text = "English",
+                                            fontWeight = if (isEnSelected) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (isEnSelected) AccentTeal else Color.White,
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                        Text(
+                                            text = "LTR",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = TextSecondary
+                                        )
+                                    }
+                                }
+                                RadioButton(
+                                    selected = isEnSelected,
+                                    onClick = { onLanguageChange("en") },
+                                    colors = RadioButtonDefaults.colors(selectedColor = AccentTeal)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 4. بطاقتا مشاركة التطبيق وتقييم التطبيق
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // كارت مشاركة التطبيق
+                Surface(
+                    color = GlassSurface,
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, DarkBorder),
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { shareApp() }
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(AccentTeal.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = null,
+                                tint = AccentTeal,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                            text = if (isArabic) "مشاركة التطبيق" else "Share App",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = if (isArabic) "شارك البث مع أصدقائك" else "Share with friends",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = TextSecondary,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+
+                // كارت تقييم التطبيق
+                Surface(
+                    color = GlassSurface,
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, DarkBorder),
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { rateApp() }
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(GoldAmber.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Star,
+                                contentDescription = null,
+                                tint = GoldAmber,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                            text = if (isArabic) "تقييم التطبيق" else "Rate App",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = if (isArabic) "ادعمنا بـ 5 نجوم" else "Support with 5 stars",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = TextSecondary,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+        }
+
+        // 5. بطاقات سياسة الخصوصية وشروط الاستخدام
+        item {
+            Surface(
+                color = GlassSurface,
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, DarkBorder),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column {
+                    // سياسة الخصوصية
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showPrivacyDialog = true }
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Security,
+                                contentDescription = null,
+                                tint = AccentTeal,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Text(
+                                text = if (isArabic) "سياسة الخصوصية" else "Privacy Policy",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = TextSecondary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+
+                    HorizontalDivider(color = DarkBorder)
+
+                    // شروط الاستخدام
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showTermsDialog = true }
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Description,
+                                contentDescription = null,
+                                tint = AccentTeal,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Text(
+                                text = if (isArabic) "شروط الاستخدام" else "Terms of Service",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = TextSecondary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    // نافذة تحديث التطبيق Pop-up
+    if (showUpdateDialog) {
+        AlertDialog(
+            onDismissRequest = { showUpdateDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.SystemUpdate, contentDescription = null, tint = AccentTeal)
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        text = if (isArabic) "تحديث التطبيق" else "App Update",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+            },
+            text = {
+                Column {
+                    Text(
+                        text = if (isArabic)
+                            "أنت الآن تستخدم أحدث إصدار رقم ($appVersionName)."
+                        else
+                            "You are currently using the latest version ($appVersionName).",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = if (isArabic)
+                            "في حال وجود أي إصدار أحدث، يمكنك التحديث تلقائياً وبسهولة عبر متجر Google Play."
+                        else
+                            "If any newer release is available, you can update automatically via Google Play.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showUpdateDialog = false
+                        openUrl(playStoreAppUrl)
+                    }
+                ) {
+                    Text(
+                        text = if (isArabic) "فحص التحديث على Google Play" else "Check on Google Play",
+                        color = AccentTeal,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showUpdateDialog = false }) {
+                    Text(if (isArabic) "إغلاق" else "Close", color = TextSecondary)
+                }
+            },
+            containerColor = DarkCard,
+            textContentColor = Color.White
+        )
+    }
+
+    // نافذة سياسة الخصوصية Pop-up
+    if (showPrivacyDialog) {
+        AlertDialog(
+            onDismissRequest = { showPrivacyDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Security, contentDescription = null, tint = AccentTeal)
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        text = if (isArabic) "سياسة الخصوصية" else "Privacy Policy",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+            },
+            text = {
+                LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
+                    item {
+                        Text(
+                            text = if (isArabic) """
+نحن في Enterprise IPTV نقدر خصوصيتك ونلتزم بحمايتها بأعلى المعايير:
+
+1. جمع البيانات:
+التطبيق لا يقوم بجمع أو تسجيل أو مشاركة أي بيانات شخصية أو معلومات خاصة بك مع أي طرف ثالث.
+
+2. التخزين المحلي:
+يتم حفظ القنوات المفضلة وقوائم التشغيل M3U التي تقوم بإضافتها محلياً فقط على جهازك (Local Storage).
+
+3. أذونات التطبيق:
+يستخدم التطبيق إذن الإنترنت فقط لتشغيل البث التلفزيوني المباشر، وإذن التخزين فقط في حال اختيارك حفظ تسجيلات البث (DVR) على جهازك.
+
+4. روابط البث:
+التطبيق هو مشغل وسائط تفاعلي، ولا يتحكم في السيرفرات الخارجية أو المحتوى المستضاف عليها.
+
+نلتزم تماماً بسياسات وإرشادات حماية خصوصية المستخدم في Google Play.
+                            """.trimIndent()
+                            else """
+Enterprise IPTV respects your privacy and is committed to protecting your personal data:
+
+1. Data Collection:
+This application does not collect, record, or share any personal information or device identifiers with third parties.
+
+2. Local Storage:
+Your favorite channels and custom M3U playlists are saved strictly on your local device storage.
+
+3. App Permissions:
+Internet permission is used solely to stream live channels. Storage permission is only requested if you choose to record live streams (DVR) to your device.
+
+4. Streaming Content:
+The app acts as an advanced IPTV media player and does not host or control third-party streaming content.
+
+Fully compliant with Google Play Developer Privacy Policies.
+                            """.trimIndent(),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White,
+                            lineHeight = 20.sp
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showPrivacyDialog = false }) {
+                    Text(if (isArabic) "حسناً" else "OK", color = AccentTeal, fontWeight = FontWeight.Bold)
+                }
+            },
+            containerColor = DarkCard,
+            textContentColor = Color.White
+        )
+    }
+
+    // نافذة شروط الاستخدام Pop-up
+    if (showTermsDialog) {
+        AlertDialog(
+            onDismissRequest = { showTermsDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Description, contentDescription = null, tint = AccentTeal)
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        text = if (isArabic) "شروط الاستخدام" else "Terms of Service",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+            },
+            text = {
+                LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
+                    item {
+                        Text(
+                            text = if (isArabic) """
+باستخدامك لتطبيق Enterprise IPTV، فإنك توافق على الشروط والأحكام التالية:
+
+1. طبيعة التطبيق:
+التطبيق عبارة عن مشغل وسائط متطور (IPTV Player) مخصص لتشغيل البث المفتوح وقوائم التشغيل M3U/M3U8 التي يملك المستخدم حق الوصول إليها.
+
+2. إخلاء المسؤولية:
+التطبيق لا يستضيف أي قنوات أو سيرفرات بث على خوادمه الخاصة. المستخدم مسؤول مسؤولية كاملة عن أي روابط أو قوائم تشغيل خارجية يضيفها للتطبيق.
+
+3. الاستخدام العادل:
+يحظر استخدام التطبيق بأي طريقة تنتهك حقوق الملكية الفكرية أو القوانين المعمول بها في بلد إقامتك.
+
+4. التحديثات والتوافر:
+يسعى فريق العمل لتقديم أفضل جودة واستقرار للمشغل، وقد يتم تحديث الميزات بشكل دوري لتحسين الأداء وتجربة المستخدم.
+                            """.trimIndent()
+                            else """
+By using Enterprise IPTV, you agree to the following terms and conditions:
+
+1. Service Nature:
+This application is an IPTV media player designed to play publicly available streams and user-provided M3U/M3U8 playlists.
+
+2. Content Disclaimer:
+The app does not host, broadcast, or store media files or channels on proprietary servers. Users are solely responsible for playlists added manually.
+
+3. Fair Use:
+Users must adhere to intellectual property rights and applicable local and international copyright laws.
+
+4. Continuous Updates:
+We strive to provide the highest playback performance. Features may be updated periodically to enhance stability and user experience.
+                            """.trimIndent(),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White,
+                            lineHeight = 20.sp
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showTermsDialog = false }) {
+                    Text(if (isArabic) "موافق" else "Agree", color = AccentTeal, fontWeight = FontWeight.Bold)
+                }
+            },
+            containerColor = DarkCard,
+            textContentColor = Color.White
+        )
+    }
 }
 
 /**
