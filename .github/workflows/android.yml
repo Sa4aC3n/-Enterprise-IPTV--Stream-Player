@@ -25,6 +25,28 @@ jobs:
       with:
         gradle-version: '8.10.2'
 
+    - name: Setup Production Release Keystore
+      run: |
+        if [ ! -f "upload-keystore.jks" ]; then
+          echo "Generating official release keystore..."
+          keytool -genkeypair -v \
+            -keystore upload-keystore.jks \
+            -alias upload \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass "EnterpriseIptv2026!" \
+            -keypass "EnterpriseIptv2026!" \
+            -dname "CN=Enterprise IPTV, OU=Production, O=Enterprise, L=Cairo, ST=Cairo, C=EG"
+        fi
+        
+        cat <<EOF > keystore.properties
+        storeFile=upload-keystore.jks
+        storePassword=EnterpriseIptv2026!
+        keyAlias=upload
+        keyPassword=EnterpriseIptv2026!
+        EOF
+
     - name: Build Release Bundle (AAB) & APK
       run: gradle :app:bundleRelease :app:assembleRelease --stacktrace --no-daemon
 
@@ -39,3 +61,9 @@ jobs:
       with:
         name: app-release-apk
         path: app/build/outputs/apk/release/*.apk
+
+    - name: Upload Release Keystore Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: upload-keystore
+        path: upload-keystore.jks
