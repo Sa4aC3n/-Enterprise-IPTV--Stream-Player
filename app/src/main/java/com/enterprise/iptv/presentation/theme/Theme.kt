@@ -1,6 +1,5 @@
 package com.enterprise.iptv.presentation.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -9,33 +8,40 @@ import androidx.compose.ui.graphics.Color
 
 private val DarkColorScheme = darkColorScheme(
     primary = AccentTeal,
-    secondary = PurpleGrey80,
-    background = DarkBackground,
-    surface = DarkSurface,
     onPrimary = Color.Black,
-    onBackground = Color.White,
-    onSurface = Color.White
+    primaryContainer = DarkElevated,
+    onPrimaryContainer = AccentTeal,
+    secondary = NeonBlue,
+    onSecondary = Color.White,
+    secondaryContainer = DarkElevated,
+    onSecondaryContainer = Color.White,
+    tertiary = GoldAmber,
+    onTertiary = Color.Black,
+    background = DarkBackground,
+    onBackground = TextPrimary,
+    surface = DarkSurface,
+    onSurface = TextPrimary,
+    surfaceVariant = DarkCard,
+    onSurfaceVariant = TextSecondary,
+    outline = DarkBorder,
+    error = LiveRed,
+    onError = Color.White
 )
 
-private val LightColorScheme = lightColorScheme(
-    primary = PrimaryIndigo,
-    secondary = AccentTeal,
-    background = Color(0xFFF8F9FA),
-    surface = Color.White,
-    onPrimary = Color.White,
-    onBackground = Color.Black,
-    onSurface = Color.Black
+private val LightColorScheme = darkColorScheme( // Keep dark cinema theme default for TV/Media experience
+    primary = AccentTeal,
+    onPrimary = Color.Black,
+    background = DarkBackground,
+    surface = DarkSurface
 )
 
 @Composable
 fun EnterpriseIPTVTheme(
-    darkTheme: Boolean = true, // Default to Dark Theme for Media/TV app
+    darkTheme: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
-
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = DarkColorScheme,
         content = content
     )
 }
