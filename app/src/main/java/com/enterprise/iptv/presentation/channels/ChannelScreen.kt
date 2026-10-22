@@ -8,7 +8,10 @@ import android.net.Uri
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
+import java.io.File
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
@@ -59,7 +62,11 @@ import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.enterprise.iptv.R
 import com.enterprise.iptv.domain.model.Channel
+import com.enterprise.iptv.domain.model.EpgProgram
 import com.enterprise.iptv.domain.recorder.RecordState
+import com.enterprise.iptv.presentation.multiview.MultiViewContainer
+import com.enterprise.iptv.presentation.multiview.MultiViewLayout
+import com.enterprise.iptv.presentation.multiview.MultiViewManager
 import com.enterprise.iptv.presentation.player.PlaybackStatus
 import com.enterprise.iptv.presentation.player.PlayerEngine
 import com.enterprise.iptv.presentation.player.VideoQuality
@@ -103,12 +110,36 @@ fun getCountryFlagEmoji(countryCode: String?): String {
 @Composable
 fun ChannelScreen(
     viewModel: ChannelsViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onEnterPip: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val isFullscreen by viewModel.isFullscreen.collectAsState()
+    val isInPipMode by viewModel.isInPipMode.collectAsState()
     val context = LocalContext.current
     val activity = context as? Activity
+
+    // في وضع النافذة العائمة (PiP)، يتم عرض المشغل فقط بدون أي أشرطة أو أزرار أو حواف
+    if (isInPipMode) {
+        AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    player = viewModel.playerEngine.exoPlayer
+                    useController = false
+                    setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FIT)
+                    layoutParams = FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                    )
+                }
+            },
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+        )
+        return
+    }
+
     val prefs = remember { context.getSharedPreferences("iptv_prefs", Context.MODE_PRIVATE) }
     var currentLanguage by remember { mutableStateOf(prefs.getString("app_lang", "ar") ?: "ar") }
     val isArabic = currentLanguage == "ar"
@@ -164,6 +195,7 @@ fun ChannelScreen(
                 if (!isFullscreen) {
                     ModernTopBar(
                         isArabic = isArabic,
+                        isKidsMode = (uiState as? ChannelsUiState.Success)?.isKidsMode ?: false,
                         onToggleLanguage = { toggleAppLanguage() },
                         onAddPlaylistClick = { showAddDialog = true }
                     )
@@ -202,6 +234,10 @@ fun ChannelScreen(
                         }
                     }
                     is ChannelsUiState.Success -> {
+                        val savedRecordings by viewModel.savedRecordings.collectAsState()
+                        val sleepTimerSeconds by viewModel.sleepTimerSeconds.collectAsState()
+                        val isMultiViewActive by viewModel.isMultiViewActive.collectAsState()
+
                         CinematicContent(
                             state = state,
                             currentTab = currentTab,
@@ -217,8 +253,96 @@ fun ChannelScreen(
                             onCountrySelect = { viewModel.onCountrySelect(it) },
                             onSearchChange = { viewModel.onSearchQueryChange(it) },
                             onStartRecord = { viewModel.startRecording() },
-                            onStopRecord = { viewModel.stopRecording() }
+                            onStopRecord = { viewModel.stopRecording() },
+                            savedRecordings = savedRecordings,
+                            onPlayRecording = { viewModel.playRecording(it) },
+                            onDeleteRecording = { viewModel.deleteRecording(it) },
+                            onEnterPip = onEnterPip,
+                            onPlayNext = { viewModel.playNextChannel() },
+                            onPlayPrevious = { viewModel.playPreviousChannel() },
+                            sleepTimerSeconds = sleepTimerSeconds,
+                            onSetSleepTimer = { viewModel.setSleepTimer(it) },
+                            isMultiViewActive = isMultiViewActive,
+                            multiViewManager = viewModel.multiViewManager,
+                            onStartMultiView = { viewModel.startMultiView() },
+                            onStopMultiView = { ch -> viewModel.stopMultiView(ch) },
+                            onEnableKidsMode = { viewModel.enableKidsMode() },
+                            onDisableKidsMode = { pin -> viewModel.disableKidsMode(pin) },
+                            onAutoHeal = { viewModel.autoHealCurrentChannel() },
+                            onGetChannelSchedule = { ch -> viewModel.getChannelSchedule(ch) }
                         )
+
+                        // نافذة تأكيد اكتمال وحفظ التسجيل الحي بنجاح
+                        if (state.recordState is RecordState.Completed) {
+                            val recordedFile = state.recordState.file
+                            val sizeMb = "%.2f".format(recordedFile.length() / (1024.0 * 1024.0))
+                            AlertDialog(
+                                onDismissRequest = { viewModel.dismissRecordCompleted() },
+                                icon = {
+                                    Icon(
+                                        imageVector = Icons.Default.VideoLibrary,
+                                        contentDescription = null,
+                                        tint = AccentTeal,
+                                        modifier = Modifier.size(36.dp)
+                                    )
+                                },
+                                title = {
+                                    Text(
+                                        text = if (isArabic) "تم حفظ التسجيل بنجاح!" else "Recording Saved!",
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                },
+                                text = {
+                                    Column {
+                                        Text(
+                                            text = if (isArabic)
+                                                "تم حفظ المقطع المسجل بنجاح في مجلد الفيديوهات الخاص بالتطبيق:"
+                                            else
+                                                "The recorded stream has been saved successfully in local storage:",
+                                            color = Color.LightGray,
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                        Spacer(Modifier.height(10.dp))
+                                        Text(
+                                            text = "📄 ${recordedFile.name}",
+                                            color = Color.White,
+                                            fontWeight = FontWeight.SemiBold,
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                        Spacer(Modifier.height(4.dp))
+                                        Text(
+                                            text = "💾 الحجم: $sizeMb MB",
+                                            color = AccentTeal,
+                                            fontWeight = FontWeight.Bold,
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                },
+                                confirmButton = {
+                                    Button(
+                                        onClick = {
+                                            viewModel.dismissRecordCompleted()
+                                            viewModel.playRecording(recordedFile)
+                                        },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = AccentTeal,
+                                            contentColor = Color.Black
+                                        )
+                                    ) {
+                                        Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(Modifier.width(4.dp))
+                                        Text(if (isArabic) "تشغيل التسجيل الآن" else "Play Recording", fontWeight = FontWeight.Bold)
+                                    }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = { viewModel.dismissRecordCompleted() }) {
+                                        Text(if (isArabic) "إغلاق" else "Close", color = TextSecondary)
+                                    }
+                                },
+                                containerColor = DarkCard
+                            )
+                        }
                     }
                     is ChannelsUiState.Error -> {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -227,13 +351,111 @@ fun ChannelScreen(
                     }
                 }
 
+                val importState by viewModel.importState.collectAsState()
+
                 if (showAddDialog) {
                     AddPlaylistDialog(
+                        importState = importState,
                         onDismiss = { showAddDialog = false },
-                        onConfirm = { url ->
+                        onConfirmUrl = { url ->
                             viewModel.importM3uPlaylist(url)
-                            showAddDialog = false
+                        },
+                        onSelectFile = { uri ->
+                            viewModel.importM3uFromUri(uri, context.contentResolver)
                         }
+                    )
+                }
+
+                // نافذة نتيجة استيراد القنوات: نجاح حقيقي مع إحصائية القنوات المستوردة
+                if (importState is ImportState.Success) {
+                    val count = (importState as ImportState.Success).count
+                    AlertDialog(
+                        onDismissRequest = {
+                            viewModel.dismissImportState()
+                            showAddDialog = false
+                        },
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = AccentTeal,
+                                modifier = Modifier.size(36.dp)
+                            )
+                        },
+                        title = {
+                            Text(
+                                text = if (isArabic) "تم استيراد القنوات بنجاح!" else "Import Successful!",
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        },
+                        text = {
+                            Text(
+                                text = if (isArabic)
+                                    "تم تحليل وإضافة $count قناة جديدة بنجاح إلى مشغل البث وقائمة القنوات."
+                                else
+                                    "Successfully parsed and added $count new channels to your playlist.",
+                                color = Color.LightGray,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        },
+                        confirmButton = {
+                            Button(
+                                onClick = {
+                                    viewModel.dismissImportState()
+                                    showAddDialog = false
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = AccentTeal,
+                                    contentColor = Color.Black
+                                )
+                            ) {
+                                Text(if (isArabic) "رائع" else "Great", fontWeight = FontWeight.Bold)
+                            }
+                        },
+                        containerColor = DarkCard
+                    )
+                }
+
+                // نافذة نتيجة استيراد القنوات: خطأ حقيقي مع رسالة الخطأ
+                if (importState is ImportState.Error) {
+                    val errorMsg = (importState as ImportState.Error).message
+                    AlertDialog(
+                        onDismissRequest = { viewModel.dismissImportState() },
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Default.ErrorOutline,
+                                contentDescription = null,
+                                tint = LiveRed,
+                                modifier = Modifier.size(36.dp)
+                            )
+                        },
+                        title = {
+                            Text(
+                                text = if (isArabic) "تعذر استيراد القائمة" else "Import Failed",
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        },
+                        text = {
+                            Text(
+                                text = errorMsg,
+                                color = Color.LightGray,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        },
+                        confirmButton = {
+                            Button(
+                                onClick = { viewModel.dismissImportState() },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = AccentTeal,
+                                    contentColor = Color.Black
+                                )
+                            ) {
+                                Text(if (isArabic) "حسناً" else "OK", fontWeight = FontWeight.Bold)
+                            }
+                        },
+                        containerColor = DarkCard
                     )
                 }
             }
@@ -248,6 +470,7 @@ fun ChannelScreen(
 @Composable
 fun ModernTopBar(
     isArabic: Boolean,
+    isKidsMode: Boolean = false,
     onToggleLanguage: () -> Unit,
     onAddPlaylistClick: () -> Unit
 ) {
@@ -286,12 +509,29 @@ fun ModernTopBar(
                 }
                 Spacer(Modifier.width(10.dp))
                 Column {
-                    Text(
-                        text = stringResource(R.string.app_name),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color.White
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = stringResource(R.string.app_name),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White
+                        )
+                        if (isKidsMode) {
+                            Spacer(Modifier.width(8.dp))
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = AccentTeal.copy(alpha = 0.2f),
+                                border = BorderStroke(1.dp, AccentTeal)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("🧸 فضاء الأطفال", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = AccentTeal)
+                                }
+                            }
+                        }
+                    }
                     Text(
                         text = "LIVE STREAMING • ENTERPRISE",
                         style = MaterialTheme.typography.labelSmall,
@@ -430,21 +670,57 @@ fun CinematicContent(
     onCountrySelect: (String?) -> Unit,
     onSearchChange: (String) -> Unit,
     onStartRecord: () -> Unit,
-    onStopRecord: () -> Unit
+    onStopRecord: () -> Unit,
+    savedRecordings: List<File> = emptyList(),
+    onPlayRecording: (File) -> Unit = {},
+    onDeleteRecording: (File) -> Unit = {},
+    onEnterPip: () -> Unit = {},
+    onPlayNext: () -> Unit = {},
+    onPlayPrevious: () -> Unit = {},
+    sleepTimerSeconds: Long? = null,
+    onSetSleepTimer: (Int?) -> Unit = {},
+    isMultiViewActive: Boolean = false,
+    multiViewManager: MultiViewManager? = null,
+    onStartMultiView: () -> Unit = {},
+    onStopMultiView: (Channel?) -> Unit = {},
+    onEnableKidsMode: () -> Unit = {},
+    onDisableKidsMode: (String) -> Boolean = { false },
+    onAutoHeal: () -> Unit = {},
+    onGetChannelSchedule: (Channel) -> List<EpgProgram> = { emptyList() }
 ) {
     val configuration = LocalConfiguration.current
     val isTabletOrLandscape = configuration.screenWidthDp >= 600
+    var showScheduleDialog by remember { mutableStateOf(false) }
 
     if (isFullscreen) {
         // وضع ملء الشاشة الكامل
         Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-            VideoPlayerContainer(
-                playerEngine = playerEngine,
-                status = state.playbackStatus,
-                channelName = state.currentChannel?.name ?: "",
-                isFullscreen = true,
-                onToggleFullscreen = onToggleFullscreen
-            )
+            if (isMultiViewActive && multiViewManager != null) {
+                MultiViewContainer(
+                    multiViewManager = multiViewManager,
+                    availableChannels = state.channels,
+                    onExitMultiView = onStopMultiView
+                )
+            } else {
+                VideoPlayerContainer(
+                    playerEngine = playerEngine,
+                    status = state.playbackStatus,
+                    channelName = state.currentChannel?.name ?: "",
+                    isFullscreen = true,
+                    onToggleFullscreen = onToggleFullscreen,
+                    onEnterPip = onEnterPip,
+                    onPlayNext = onPlayNext,
+                    onPlayPrevious = onPlayPrevious,
+                    sleepTimerSeconds = sleepTimerSeconds,
+                    onSetSleepTimer = onSetSleepTimer,
+                    onStartMultiView = onStartMultiView,
+                    epgNow = state.epgNow,
+                    epgNext = state.epgNext,
+                    autoHealStatus = state.autoHealStatus,
+                    onAutoHeal = onAutoHeal,
+                    onOpenSchedule = { showScheduleDialog = true }
+                )
+            }
         }
     } else if (isTabletOrLandscape) {
         // تصميم الأجهزة اللوحية والوضع العرضي (Split Screen)
@@ -455,13 +731,32 @@ fun CinematicContent(
                     .fillMaxHeight()
                     .background(Color.Black)
             ) {
-                VideoPlayerContainer(
-                    playerEngine = playerEngine,
-                    status = state.playbackStatus,
-                    channelName = state.currentChannel?.name ?: "",
-                    isFullscreen = false,
-                    onToggleFullscreen = onToggleFullscreen
-                )
+                if (isMultiViewActive && multiViewManager != null) {
+                    MultiViewContainer(
+                        multiViewManager = multiViewManager,
+                        availableChannels = state.channels,
+                        onExitMultiView = onStopMultiView
+                    )
+                } else {
+                    VideoPlayerContainer(
+                        playerEngine = playerEngine,
+                        status = state.playbackStatus,
+                        channelName = state.currentChannel?.name ?: "",
+                        isFullscreen = false,
+                        onToggleFullscreen = onToggleFullscreen,
+                        onEnterPip = onEnterPip,
+                        onPlayNext = onPlayNext,
+                        onPlayPrevious = onPlayPrevious,
+                        sleepTimerSeconds = sleepTimerSeconds,
+                        onSetSleepTimer = onSetSleepTimer,
+                        onStartMultiView = onStartMultiView,
+                        epgNow = state.epgNow,
+                        epgNext = state.epgNext,
+                        autoHealStatus = state.autoHealStatus,
+                        onAutoHeal = onAutoHeal,
+                        onOpenSchedule = { showScheduleDialog = true }
+                    )
+                }
             }
             Box(
                 modifier = Modifier
@@ -479,7 +774,13 @@ fun CinematicContent(
                     onFavoriteToggle = onFavoriteToggle,
                     onCategorySelect = onCategorySelect,
                     onCountrySelect = onCountrySelect,
-                    onSearchChange = onSearchChange
+                    onSearchChange = onSearchChange,
+                    savedRecordings = savedRecordings,
+                    onPlayRecording = onPlayRecording,
+                    onDeleteRecording = onDeleteRecording,
+                    isKidsMode = state.isKidsMode,
+                    onEnableKidsMode = onEnableKidsMode,
+                    onDisableKidsMode = onDisableKidsMode
                 )
             }
         }
@@ -487,19 +788,45 @@ fun CinematicContent(
         // تصميم الهواتف الذكية السينمائي الرأسي
         Column(modifier = Modifier.fillMaxSize()) {
             // المشغل في الجزء العلوي بتصميم زجاجي عائم
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(230.dp)
-                    .background(Color.Black)
-            ) {
-                VideoPlayerContainer(
-                    playerEngine = playerEngine,
-                    status = state.playbackStatus,
-                    channelName = state.currentChannel?.name ?: "",
-                    isFullscreen = false,
-                    onToggleFullscreen = onToggleFullscreen
-                )
+            if (isMultiViewActive && multiViewManager != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(300.dp)
+                        .background(Color.Black)
+                ) {
+                    MultiViewContainer(
+                        multiViewManager = multiViewManager,
+                        availableChannels = state.channels,
+                        onExitMultiView = onStopMultiView
+                    )
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(230.dp)
+                        .background(Color.Black)
+                ) {
+                    VideoPlayerContainer(
+                        playerEngine = playerEngine,
+                        status = state.playbackStatus,
+                        channelName = state.currentChannel?.name ?: "",
+                        isFullscreen = false,
+                        onToggleFullscreen = onToggleFullscreen,
+                        onEnterPip = onEnterPip,
+                        onPlayNext = onPlayNext,
+                        onPlayPrevious = onPlayPrevious,
+                        sleepTimerSeconds = sleepTimerSeconds,
+                        onSetSleepTimer = onSetSleepTimer,
+                        onStartMultiView = onStartMultiView,
+                        epgNow = state.epgNow,
+                        epgNext = state.epgNext,
+                        autoHealStatus = state.autoHealStatus,
+                        onAutoHeal = onAutoHeal,
+                        onOpenSchedule = { showScheduleDialog = true }
+                    )
+                }
             }
 
             // شريط التسجيل الحي الصوتي والمرئي
@@ -522,10 +849,24 @@ fun CinematicContent(
                     onFavoriteToggle = onFavoriteToggle,
                     onCategorySelect = onCategorySelect,
                     onCountrySelect = onCountrySelect,
-                    onSearchChange = onSearchChange
+                    onSearchChange = onSearchChange,
+                    savedRecordings = savedRecordings,
+                    onPlayRecording = onPlayRecording,
+                    onDeleteRecording = onDeleteRecording,
+                    isKidsMode = state.isKidsMode,
+                    onEnableKidsMode = onEnableKidsMode,
+                    onDisableKidsMode = onDisableKidsMode
                 )
             }
         }
+    }
+
+    if (showScheduleDialog && state.currentChannel != null) {
+        ChannelScheduleDialog(
+            channel = state.currentChannel,
+            schedule = onGetChannelSchedule(state.currentChannel),
+            onDismiss = { showScheduleDialog = false }
+        )
     }
 }
 
@@ -543,7 +884,13 @@ fun TabContent(
     onFavoriteToggle: (Channel) -> Unit,
     onCategorySelect: (String?) -> Unit,
     onCountrySelect: (String?) -> Unit,
-    onSearchChange: (String) -> Unit
+    onSearchChange: (String) -> Unit,
+    savedRecordings: List<File> = emptyList(),
+    onPlayRecording: (File) -> Unit = {},
+    onDeleteRecording: (File) -> Unit = {},
+    isKidsMode: Boolean = false,
+    onEnableKidsMode: () -> Unit = {},
+    onDisableKidsMode: (String) -> Boolean = { false }
 ) {
     AnimatedContent(
         targetState = currentTab,
@@ -584,7 +931,13 @@ fun TabContent(
             AppTab.SETTINGS -> SettingsView(
                 isArabic = isArabic,
                 currentLanguage = currentLanguage,
-                onLanguageChange = onLanguageChange
+                onLanguageChange = onLanguageChange,
+                savedRecordings = savedRecordings,
+                onPlayRecording = onPlayRecording,
+                onDeleteRecording = onDeleteRecording,
+                isKidsMode = isKidsMode,
+                onEnableKidsMode = onEnableKidsMode,
+                onDisableKidsMode = onDisableKidsMode
             )
         }
     }
@@ -665,7 +1018,7 @@ fun HomeRailsView(
         if (dramaAndCinema.isNotEmpty()) {
             item {
                 ChannelCarouselSection(
-                    title = "🎬 مسلسلات وسينما (Shahid & Netflix)",
+                    title = "🎬 باقة المسلسلات والدراما العربية",
                     channels = dramaAndCinema,
                     currentChannel = currentChannel,
                     onChannelSelect = onChannelSelect,
@@ -1419,14 +1772,43 @@ fun ModernListItem(
 fun SettingsView(
     isArabic: Boolean,
     currentLanguage: String,
-    onLanguageChange: (String) -> Unit
+    onLanguageChange: (String) -> Unit,
+    savedRecordings: List<File> = emptyList(),
+    onPlayRecording: (File) -> Unit = {},
+    onDeleteRecording: (File) -> Unit = {},
+    isKidsMode: Boolean = false,
+    onEnableKidsMode: () -> Unit = {},
+    onDisableKidsMode: (String) -> Boolean = { false }
 ) {
     val context = LocalContext.current
     var showUpdateDialog by remember { mutableStateOf(false) }
     var showPrivacyDialog by remember { mutableStateOf(false) }
     var showTermsDialog by remember { mutableStateOf(false) }
+    var showRecordingsDialog by remember { mutableStateOf(false) }
+    var showKidsPinDialog by remember { mutableStateOf(false) }
 
-    val appVersionName = "1.0.0"
+    val packageInfo = remember {
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                context.packageManager.getPackageInfo(context.packageName, android.content.pm.PackageManager.PackageInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                context.packageManager.getPackageInfo(context.packageName, 0)
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+    val appVersionName = packageInfo?.versionName ?: "1.0.2"
+    val appVersionCode = packageInfo?.let {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            it.longVersionCode
+        } else {
+            @Suppress("DEPRECATION")
+            it.versionCode.toLong()
+        }
+    } ?: 3L
+
     val playStoreAppUrl = "https://play.google.com/store/apps/details?id=com.enterprise.iptv"
     val playStoreDevUrl = "https://play.google.com/store/apps/dev?id=6839550047456072292"
 
@@ -1534,7 +1916,7 @@ fun SettingsView(
                                         .padding(horizontal = 6.dp, vertical = 2.dp)
                                 ) {
                                     Text(
-                                        text = "v1",
+                                        text = "v$appVersionCode",
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
                                         color = AccentTeal
@@ -1623,6 +2005,152 @@ fun SettingsView(
                         contentDescription = null,
                         tint = AccentTeal,
                         modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+        }
+
+        // 3. بطاقة مكتبة التسجيلات المحفوظة محلياً (DVR Recordings Library)
+        item {
+            Surface(
+                color = GlassSurface,
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, if (savedRecordings.isNotEmpty()) AccentTeal.copy(alpha = 0.5f) else DarkBorder),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showRecordingsDialog = true }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(46.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(LiveRed.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.VideoLibrary,
+                                contentDescription = null,
+                                tint = LiveRed,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+
+                        Spacer(Modifier.width(14.dp))
+
+                        Column {
+                            Text(
+                                text = if (isArabic) "مكتبة التسجيلات المحفوظة (DVR)" else "Saved Recordings (DVR)",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = if (savedRecordings.isEmpty())
+                                    (if (isArabic) "لا توجد تسجيلات بعد • اضغط للاطلاع" else "No recordings yet")
+                                else
+                                    (if (isArabic) "${savedRecordings.size} تسجيل متوفر • اضغط للتشغيل أو الإدارة" else "${savedRecordings.size} recordings available"),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (savedRecordings.isNotEmpty()) AccentTeal else TextSecondary
+                            )
+                        }
+                    }
+
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = AccentTeal,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+        }
+
+        // 3.1 بطاقة فضاء الأطفال الآمن (Kids Safe Space)
+        item {
+            Surface(
+                color = if (isKidsMode) AccentTeal.copy(alpha = 0.15f) else GlassSurface,
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, if (isKidsMode) AccentTeal else DarkBorder),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(46.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(AccentTeal.copy(alpha = 0.2f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ChildCare,
+                                contentDescription = null,
+                                tint = AccentTeal,
+                                modifier = Modifier.size(26.dp)
+                            )
+                        }
+
+                        Spacer(Modifier.width(14.dp))
+
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = if (isArabic) "فضاء الأطفال الآمن (Kids Space)" else "Kids Safe Space",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text("🧸", fontSize = 16.sp)
+                            }
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = if (isKidsMode)
+                                    (if (isArabic) "مفعل • القنوات مقفلة على محتوى الأطفال فقط" else "Active • Kids channels only")
+                                else
+                                    (if (isArabic) "قفل التطبيق برمز PIN وعرض قنوات الأطفال فقط" else "Lock with PIN to kids content only"),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (isKidsMode) AccentTeal else TextSecondary
+                            )
+                        }
+                    }
+
+                    Switch(
+                        checked = isKidsMode,
+                        onCheckedChange = { checked ->
+                            if (checked) {
+                                onEnableKidsMode()
+                            } else {
+                                showKidsPinDialog = true
+                            }
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.Black,
+                            checkedTrackColor = AccentTeal,
+                            uncheckedThumbColor = Color.LightGray,
+                            uncheckedTrackColor = DarkCard
+                        )
                     )
                 }
             }
@@ -2111,6 +2639,308 @@ We strive to provide the highest playback performance. Features may be updated p
             textContentColor = Color.White
         )
     }
+
+    // نافذة مكتبة التسجيلات المحفوظة (DVR) لإدارتها وتشغيلها وحذفها محلياً
+    if (showRecordingsDialog) {
+        AlertDialog(
+            onDismissRequest = { showRecordingsDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.VideoLibrary, contentDescription = null, tint = AccentTeal)
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = if (isArabic) "مكتبة التسجيلات (${savedRecordings.size})" else "Recordings Library (${savedRecordings.size})",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+            },
+            text = {
+                if (savedRecordings.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Default.FiberManualRecord, contentDescription = null, tint = TextMuted, modifier = Modifier.size(40.dp))
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = if (isArabic) "لا توجد مقاطع مسجلة حالياً." else "No recorded streams found.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.White
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = if (isArabic)
+                                    "اضغط على زر (بدء التسجيل) أثناء مشاهدة أي قناة لتسجيلها وحفظها هنا."
+                                else
+                                    "Use the REC button while watching any stream to save recordings.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 350.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(savedRecordings, key = { it.absolutePath }) { file ->
+                            val sizeMb = "%.2f MB".format(file.length() / (1024.0 * 1024.0))
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = DarkBackground,
+                                border = BorderStroke(1.dp, DarkBorder),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = file.name,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Spacer(Modifier.height(2.dp))
+                                        Text(
+                                            text = sizeMb,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = AccentTeal
+                                        )
+                                    }
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        IconButton(
+                                            onClick = {
+                                                showRecordingsDialog = false
+                                                onPlayRecording(file)
+                                            },
+                                            modifier = Modifier.size(32.dp)
+                                        ) {
+                                            Icon(Icons.Default.PlayArrow, contentDescription = "تشغيل", tint = AccentTeal)
+                                        }
+                                        IconButton(
+                                            onClick = { onDeleteRecording(file) },
+                                            modifier = Modifier.size(32.dp)
+                                        ) {
+                                            Icon(Icons.Default.Delete, contentDescription = "حذف", tint = LiveRed)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showRecordingsDialog = false }) {
+                    Text(if (isArabic) "إغلاق" else "Close", color = AccentTeal, fontWeight = FontWeight.Bold)
+                }
+            },
+            containerColor = DarkCard,
+            textContentColor = Color.White
+        )
+    }
+
+    if (showKidsPinDialog) {
+        KidsPinDialog(
+            isEnabling = !isKidsMode,
+            onDismiss = { showKidsPinDialog = false },
+            onConfirmPin = { pin ->
+                val success = onDisableKidsMode(pin)
+                if (success) {
+                    showKidsPinDialog = false
+                }
+            }
+        )
+    }
+}
+
+/**
+ * نافذة جدول برامج القناة (EPG Schedule Dialog) لليوم بالكامل
+ */
+@Composable
+fun ChannelScheduleDialog(
+    channel: Channel?,
+    schedule: List<EpgProgram>,
+    onDismiss: () -> Unit
+) {
+    if (channel == null) return
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.EventNote, contentDescription = null, tint = AccentTeal, modifier = Modifier.size(24.dp))
+                Spacer(Modifier.width(8.dp))
+                Column {
+                    Text("دليل برامج ${channel.name}", fontWeight = FontWeight.Bold, color = Color.White, style = MaterialTheme.typography.titleMedium)
+                    Text("جدول البث لليوم على مدار 24 ساعة", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
+                }
+            }
+        },
+        text = {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(schedule, key = { it.id }) { program ->
+                    val isAiring = program.isNowPlaying
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (isAiring) AccentTeal.copy(alpha = 0.15f) else DarkCard,
+                        border = BorderStroke(1.dp, if (isAiring) AccentTeal else DarkBorder),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = program.title,
+                                    fontWeight = if (isAiring) FontWeight.Bold else FontWeight.SemiBold,
+                                    color = if (isAiring) AccentTeal else Color.White,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                if (isAiring) {
+                                    Box(
+                                        modifier = Modifier
+                                            .background(AccentTeal, RoundedCornerShape(12.dp))
+                                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                                    ) {
+                                        Text("يعرض الآن", color = Color.Black, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold)
+                                    }
+                                }
+                            }
+                            Spacer(Modifier.height(4.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Schedule, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(13.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    text = program.formattedTimeRange,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = TextSecondary
+                                )
+                            }
+                            if (isAiring) {
+                                Spacer(Modifier.height(6.dp))
+                                LinearProgressIndicator(
+                                    progress = { program.progressPercent },
+                                    modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
+                                    color = AccentTeal,
+                                    trackColor = Color.White.copy(alpha = 0.15f)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("إغلاق", color = AccentTeal, fontWeight = FontWeight.Bold)
+            }
+        },
+        containerColor = DarkBackground
+    )
+}
+
+/**
+ * نافذة التحقق من رمز PIN لفضاء الأطفال الآمن (Kids Safe Space PIN)
+ */
+@Composable
+fun KidsPinDialog(
+    isEnabling: Boolean,
+    onDismiss: () -> Unit,
+    onConfirmPin: (String) -> Unit
+) {
+    var pin by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(Icons.Default.Lock, contentDescription = null, tint = AccentTeal, modifier = Modifier.size(32.dp))
+        },
+        title = {
+            Text(
+                text = if (isEnabling) "تفعيل فضاء الأطفال الآمن 🧸" else "إلغاء قفل فضاء الأطفال",
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+        },
+        text = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = if (isEnabling)
+                        "أدخل رمز PIN من 4 أرقام لقفل التطبيق على محتوى الأطفال فقط (الافتراضي: 0000)"
+                    else
+                        "أدخل رمز PIN المكون من 4 أرقام للخروج من فضاء الأطفال",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.LightGray,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = pin,
+                    onValueChange = {
+                        if (it.length <= 4 && it.all { ch -> ch.isDigit() }) {
+                            pin = it
+                            error = null
+                        }
+                    },
+                    singleLine = true,
+                    placeholder = { Text("••••", textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
+                    modifier = Modifier.width(160.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = AccentTeal,
+                        unfocusedBorderColor = DarkBorder,
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
+                    ),
+                    isError = error != null
+                )
+                if (error != null) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(error!!, color = LiveRed, style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (pin.length == 4) {
+                        onConfirmPin(pin)
+                    } else {
+                        error = "يجب إدخال 4 أرقام"
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = AccentTeal, contentColor = Color.Black)
+            ) {
+                Text("تأكيد", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("إلغاء", color = TextSecondary)
+            }
+        },
+        containerColor = DarkCard
+    )
 }
 
 /**
@@ -2122,7 +2952,18 @@ fun VideoPlayerContainer(
     status: PlaybackStatus,
     channelName: String,
     isFullscreen: Boolean,
-    onToggleFullscreen: () -> Unit
+    onToggleFullscreen: () -> Unit,
+    onEnterPip: () -> Unit = {},
+    onPlayNext: () -> Unit = {},
+    onPlayPrevious: () -> Unit = {},
+    sleepTimerSeconds: Long? = null,
+    onSetSleepTimer: (Int?) -> Unit = {},
+    onStartMultiView: () -> Unit = {},
+    epgNow: EpgProgram? = null,
+    epgNext: EpgProgram? = null,
+    autoHealStatus: String? = null,
+    onAutoHeal: () -> Unit = {},
+    onOpenSchedule: () -> Unit = {}
 ) {
     val volume by playerEngine.volume.collectAsState()
     val isMuted by playerEngine.isMuted.collectAsState()
@@ -2131,9 +2972,20 @@ fun VideoPlayerContainer(
     val selectedQuality by playerEngine.selectedQuality.collectAsState()
     val servers by playerEngine.servers.collectAsState()
     val currentServerIndex by playerEngine.currentServerIndex.collectAsState()
+    val isAudioOnly by playerEngine.isAudioOnly.collectAsState()
 
     var showControls by remember { mutableStateOf(true) }
     var showSettingsDialog by remember { mutableStateOf(false) }
+    var showOsd by remember { mutableStateOf(false) }
+
+    // شريط معلومات القناة (OSD) عند التبديل الخاطف بين القنوات
+    LaunchedEffect(channelName) {
+        if (channelName.isNotBlank()) {
+            showOsd = true
+            delay(3000)
+            showOsd = false
+        }
+    }
 
     // إخفاء أزرار التحكم تلقائياً بعد 4 ثوانٍ أثناء التشغيل لتوفير رؤية سينمائية بدون أي تشويش
     LaunchedEffect(showControls, status) {
@@ -2166,6 +3018,58 @@ fun VideoPlayerContainer(
             },
             modifier = Modifier.fillMaxSize()
         )
+
+        // واجهة نمط الاستماع الصوتي الموفر للباقة والبطارية
+        if (isAudioOnly) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(DarkBackground),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .clip(CircleShape)
+                            .background(AccentTeal.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Headphones,
+                            contentDescription = null,
+                            tint = AccentTeal,
+                            modifier = Modifier.size(34.dp)
+                        )
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = channelName.ifBlank { "بث صوتي مباشر" },
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "📻 نمط الاستماع الصوتي مفعل (موفر باقة الإنترنت)",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = AccentTeal
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    OutlinedButton(
+                        onClick = { playerEngine.toggleAudioOnly() },
+                        border = BorderStroke(1.dp, AccentTeal),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                    ) {
+                        Text("العودة لعرض الفيديو", color = AccentTeal, style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+        }
 
         // حالة التحميل الدائري النظيف في منتصف الشاشة
         when (status) {
@@ -2215,27 +3119,75 @@ fun VideoPlayerContainer(
                             Text("التبديل لسيرفر بديل", color = AccentTeal)
                         }
                     }
+                    Spacer(Modifier.height(6.dp))
+                    Button(
+                        onClick = onAutoHeal,
+                        colors = ButtonDefaults.buttonColors(containerColor = AccentTeal, contentColor = Color.Black),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                    ) {
+                        Icon(Icons.Default.HealthAndSafety, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("فحص وإصلاح البث تلقائياً", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
                 }
             }
             else -> {
-                // زر التشغيل والإيقاف المؤقت المركزي الأنيق عند لمس الشاشة
+                // أزرار التحكم المركزية (القناة السابقة • تشغيل/إيقاف • القناة التالية)
                 AnimatedVisibility(
                     visible = showControls,
                     enter = fadeIn(),
                     exit = fadeOut()
                 ) {
-                    IconButton(
-                        onClick = { playerEngine.togglePlayPause() },
-                        modifier = Modifier
-                            .size(54.dp)
-                            .background(Color.Black.copy(alpha = 0.65f), CircleShape)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Icon(
-                            imageVector = if (status is PlaybackStatus.Playing) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = "تشغيل / إيقاف",
-                            tint = Color.White,
-                            modifier = Modifier.size(30.dp)
-                        )
+                        // زر الانتقال للقناة السابقة (Fast Zapping Back)
+                        IconButton(
+                            onClick = onPlayPrevious,
+                            modifier = Modifier
+                                .size(44.dp)
+                                .background(Color.Black.copy(alpha = 0.65f), CircleShape)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.SkipPrevious,
+                                contentDescription = "القناة السابقة",
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+
+                        // زر التشغيل والإيقاف المركزي
+                        IconButton(
+                            onClick = { playerEngine.togglePlayPause() },
+                            modifier = Modifier
+                                .size(56.dp)
+                                .background(Color.Black.copy(alpha = 0.75f), CircleShape)
+                                .border(1.5.dp, AccentTeal, CircleShape)
+                        ) {
+                            Icon(
+                                imageVector = if (status is PlaybackStatus.Playing) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                contentDescription = "تشغيل / إيقاف",
+                                tint = Color.White,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+
+                        // زر الانتقال للقناة التالية (Fast Zapping Next)
+                        IconButton(
+                            onClick = onPlayNext,
+                            modifier = Modifier
+                                .size(44.dp)
+                                .background(Color.Black.copy(alpha = 0.65f), CircleShape)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.SkipNext,
+                                contentDescription = "القناة التالية",
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -2308,6 +3260,51 @@ fun VideoPlayerContainer(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        // 0. زر المشاهدة المتعددة (Multi-View)
+                        IconButton(
+                            onClick = onStartMultiView,
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(Color.Black.copy(alpha = 0.65f), CircleShape)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.GridView,
+                                contentDescription = "المشاهدة المتعددة (Multi-View)",
+                                tint = AccentTeal,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
+                        // 0.1 زر دليل البرامج (EPG)
+                        IconButton(
+                            onClick = onOpenSchedule,
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(Color.Black.copy(alpha = 0.65f), CircleShape)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.EventNote,
+                                contentDescription = "دليل البرامج (EPG)",
+                                tint = AccentTeal,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
+                        // 1. زر النافذة العائمة الذكية (Picture-in-Picture)
+                        IconButton(
+                            onClick = onEnterPip,
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(Color.Black.copy(alpha = 0.65f), CircleShape)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PictureInPictureAlt,
+                                contentDescription = "النافذة العائمة PiP",
+                                tint = AccentTeal,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
                         // 1. زر الترس: يفتح إعدادات جودة البث والسيرفرات البديلة
                         IconButton(
                             onClick = { showSettingsDialog = true },
@@ -2355,6 +3352,26 @@ fun VideoPlayerContainer(
                     }
                 }
 
+                if (autoHealStatus != null) {
+                    Surface(
+                        color = Color.Black.copy(alpha = 0.85f),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, NeonCyan.copy(alpha = 0.7f)),
+                        modifier = Modifier
+                            .padding(top = 48.dp)
+                            .align(Alignment.TopCenter)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.HealthAndSafety, contentDescription = null, tint = NeonCyan, modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(text = autoHealStatus, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+
                 // الشريط السفلي: تحكم الصوت في الجانب المقابل بشكل مستقل ومرتب تماماً
                 Row(
                     modifier = Modifier
@@ -2396,6 +3413,85 @@ fun VideoPlayerContainer(
                 }
             }
         }
+
+        // شريط معلومات القناة العائم (OSD Banner) عند التقليب السريع بين القنوات
+        AnimatedVisibility(
+            visible = showOsd,
+            enter = fadeIn(tween(150)) + slideInVertically(tween(150)) { it / 2 },
+            exit = fadeOut(tween(250)) + slideOutVertically(tween(250)) { it / 2 },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 16.dp)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = Color.Black.copy(alpha = 0.92f),
+                border = BorderStroke(1.dp, AccentTeal.copy(alpha = 0.6f))
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(LiveRed)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = channelName,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+
+                    if (epgNow != null) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = "📺 الآن: ${epgNow.title}",
+                            fontSize = 12.sp,
+                            color = AccentTeal,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = epgNow.formattedTimeRange,
+                                fontSize = 10.sp,
+                                color = TextSecondary
+                            )
+                            if (epgNext != null) {
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text = "• التالي: ${epgNext.title}",
+                                    fontSize = 10.sp,
+                                    color = TextSecondary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        LinearProgressIndicator(
+                            progress = { epgNow.progressPercent },
+                            modifier = Modifier
+                                .width(200.dp)
+                                .height(3.dp)
+                                .clip(RoundedCornerShape(2.dp)),
+                            color = AccentTeal,
+                            trackColor = Color.White.copy(alpha = 0.2f)
+                        )
+                    }
+                }
+            }
+        }
     }
 
     // نافذة إعدادات البث المودرن الشاملة (جودة البث + السيرفرات البديلة + أبعاد العرض)
@@ -2411,6 +3507,156 @@ fun VideoPlayerContainer(
             },
             text = {
                 LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                    // نمط الاستماع الصوتي وموفر باقة الإنترنت
+                    item {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = AccentTeal.copy(alpha = 0.12f),
+                            border = BorderStroke(1.dp, AccentTeal.copy(alpha = 0.3f)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { playerEngine.toggleAudioOnly() }
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Headphones,
+                                        contentDescription = null,
+                                        tint = AccentTeal,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                    Spacer(Modifier.width(10.dp))
+                                    Column {
+                                        Text(
+                                            text = "وضع الاستماع الصوتي (Audio Only)",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                        Text(
+                                            text = "إيقاف الفيديو لتوفير 80% من باقة الإنترنت",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = TextSecondary
+                                        )
+                                    }
+                                }
+                                Switch(
+                                    checked = isAudioOnly,
+                                    onCheckedChange = { playerEngine.toggleAudioOnly() },
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = AccentTeal,
+                                        checkedTrackColor = AccentTeal.copy(alpha = 0.5f)
+                                    )
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        HorizontalDivider(color = DarkBorder)
+                        Spacer(Modifier.height(4.dp))
+                    }
+
+                    // قسم مؤقت النوم التلقائي الذكي (Smart Sleep Timer)
+                    item {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = DarkCard,
+                            border = BorderStroke(1.dp, if (sleepTimerSeconds != null) AccentTeal else DarkBorder),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.Bedtime,
+                                            contentDescription = null,
+                                            tint = if (sleepTimerSeconds != null) AccentTeal else Color.White,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(
+                                            text = "مؤقت النوم التلقائي (Sleep Timer)",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                    }
+                                    if (sleepTimerSeconds != null) {
+                                        val min = sleepTimerSeconds / 60
+                                        val sec = sleepTimerSeconds % 60
+                                        Text(
+                                            text = "%02d:%02d".format(min, sec),
+                                            color = AccentTeal,
+                                            fontWeight = FontWeight.Bold,
+                                            style = MaterialTheme.typography.labelMedium
+                                        )
+                                    }
+                                }
+                                Spacer(Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    listOf(15, 30, 60, 90).forEach { mins ->
+                                        val isCurrent = sleepTimerSeconds != null && (sleepTimerSeconds + 59) / 60 == mins.toLong()
+                                        Surface(
+                                            onClick = { onSetSleepTimer(mins) },
+                                            shape = RoundedCornerShape(8.dp),
+                                            color = if (isCurrent) AccentTeal else DarkBackground,
+                                            border = BorderStroke(1.dp, if (isCurrent) AccentTeal else DarkBorder),
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Text(
+                                                text = "$mins د",
+                                                textAlign = TextAlign.Center,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (isCurrent) Color.Black else Color.White,
+                                                modifier = Modifier.padding(vertical = 8.dp)
+                                            )
+                                        }
+                                    }
+                                    if (sleepTimerSeconds != null) {
+                                        Surface(
+                                            onClick = { onSetSleepTimer(null) },
+                                            shape = RoundedCornerShape(8.dp),
+                                            color = LiveRed.copy(alpha = 0.2f),
+                                            border = BorderStroke(1.dp, LiveRed),
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Text(
+                                                text = "إلغاء",
+                                                textAlign = TextAlign.Center,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = LiveRed,
+                                                modifier = Modifier.padding(vertical = 8.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        HorizontalDivider(color = DarkBorder)
+                        Spacer(Modifier.height(4.dp))
+                    }
+
                     // 1. قسم جودة البث
                     item {
                         Text(
@@ -2806,44 +4052,122 @@ fun SearchBar(query: String, onQueryChange: (String) -> Unit) {
 }
 
 /**
- * نافذة إضافة رابط قائمة M3U خارجية
+ * نافذة إضافة قنوات M3U خارجية (عبر رابط ويب مباشر أو عبر اختيار ملف من ذاكرة الجهاز)
  */
 @Composable
 fun AddPlaylistDialog(
+    importState: ImportState,
     onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
+    onConfirmUrl: (String) -> Unit,
+    onSelectFile: (Uri) -> Unit
 ) {
     var urlText by remember { mutableStateOf("") }
+    val isLoading = importState is ImportState.Loading
+
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        uri?.let { onSelectFile(it) }
+    }
 
     AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.add_playlist), fontWeight = FontWeight.Bold) },
+        onDismissRequest = { if (!isLoading) onDismiss() },
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.PlaylistAdd, contentDescription = null, tint = AccentTeal)
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.add_playlist), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+            }
+        },
         text = {
-            Column {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "يمكنك إضافة باقة قنواتك الخاصة عبر اختيار ملف M3U من الهاتف أو لصق رابط مباشر:",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary
+                )
+
+                Spacer(Modifier.height(14.dp))
+
+                // 1. زر اختيار ملف من ذاكرة الهاتف
+                OutlinedButton(
+                    onClick = {
+                        filePickerLauncher.launch(arrayOf("*/*", "text/*", "audio/x-mpegurl", "application/vnd.apple.mpegurl"))
+                    },
+                    enabled = !isLoading,
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, AccentTeal),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.FolderOpen, contentDescription = null, tint = AccentTeal, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("📁 اختيار ملف M3U من الهاتف", color = AccentTeal, fontWeight = FontWeight.Bold)
+                }
+
+                Spacer(Modifier.height(14.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    HorizontalDivider(modifier = Modifier.weight(1f), color = DarkBorder)
+                    Text(" أو لصق رابط ويب ", style = MaterialTheme.typography.labelSmall, color = TextMuted, modifier = Modifier.padding(horizontal = 8.dp))
+                    HorizontalDivider(modifier = Modifier.weight(1f), color = DarkBorder)
+                }
+
+                Spacer(Modifier.height(14.dp))
+
+                // 2. حقل إدخال الرابط
                 OutlinedTextField(
                     value = urlText,
                     onValueChange = { urlText = it },
-                    placeholder = { Text(stringResource(R.string.playlist_url_hint)) },
+                    enabled = !isLoading,
+                    placeholder = { Text(stringResource(R.string.playlist_url_hint), style = MaterialTheme.typography.bodySmall) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = DarkCard,
+                        unfocusedContainerColor = DarkCard,
+                        focusedBorderColor = AccentTeal,
+                        unfocusedBorderColor = DarkBorder
+                    )
                 )
+
+                if (isLoading) {
+                    Spacer(Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(color = AccentTeal, modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(10.dp))
+                        Text("جاري قراءة واستيراد القنوات...", style = MaterialTheme.typography.bodySmall, color = Color.White)
+                    }
+                }
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    if (urlText.isNotBlank()) onConfirm(urlText.trim())
+                    if (urlText.isNotBlank()) onConfirmUrl(urlText.trim())
                 },
+                enabled = !isLoading && urlText.isNotBlank(),
                 colors = ButtonDefaults.buttonColors(containerColor = AccentTeal, contentColor = Color.Black)
             ) {
-                Text(stringResource(R.string.btn_save))
+                Text(stringResource(R.string.btn_save), fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.btn_cancel))
+            TextButton(
+                onClick = onDismiss,
+                enabled = !isLoading
+            ) {
+                Text(stringResource(R.string.btn_cancel), color = TextSecondary)
             }
-        }
+        },
+        containerColor = DarkCard,
+        textContentColor = Color.White
     )
 }

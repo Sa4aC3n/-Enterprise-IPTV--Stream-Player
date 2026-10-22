@@ -9,6 +9,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
@@ -72,6 +73,10 @@ class PlayerEngine @Inject constructor(
     private val _selectedQuality = MutableStateFlow<VideoQuality?>(null) // null = Auto
     val selectedQuality = _selectedQuality.asStateFlow()
 
+    // وضع الاستماع الصوتي فقط وموفر البيانات (Audio-Only Mode)
+    private val _isAudioOnly = MutableStateFlow(false)
+    val isAudioOnly = _isAudioOnly.asStateFlow()
+
     private val playerListener = object : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {
             _playbackStatus.value = when (state) {
@@ -105,8 +110,20 @@ class PlayerEngine @Inject constructor(
             .setConnectTimeoutMs(15_000)
             .setReadTimeoutMs(15_000)
 
+        // إعداد متحكم تخزين فائق السرعة لتقليل زمن انتظار فتح وتبديل القنوات (Zero-Buffer Fast Zapping)
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                /* minBufferMs = */ 1_500,
+                /* maxBufferMs = */ 6_000,
+                /* bufferForPlaybackMs = */ 500,
+                /* bufferForPlaybackAfterRebufferMs = */ 1_000
+            )
+            .setPrioritizeTimeOverSizeThresholds(true)
+            .build()
+
         ExoPlayer.Builder(context)
             .setMediaSourceFactory(DefaultMediaSourceFactory(httpDataSource))
+            .setLoadControl(loadControl)
             .build().apply {
                 playWhenReady = true
                 addListener(playerListener)
@@ -231,6 +248,21 @@ class PlayerEngine @Inject constructor(
         } else {
             exoPlayer.play()
         }
+    }
+
+    fun toggleAudioOnly() {
+        val next = !_isAudioOnly.value
+        _isAudioOnly.value = next
+        exoPlayer.trackSelectionParameters = exoPlayer.trackSelectionParameters
+            .buildUpon()
+            .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, next)
+            .build()
+    }
+
+    fun playFile(file: java.io.File) {
+        _servers.value = listOf(StreamServer("تسجيل محلي", file.absolutePath))
+        _currentServerIndex.value = 0
+        playUrlInternal(android.net.Uri.fromFile(file).toString())
     }
 
     fun setResizeModeDirect(mode: Int) {

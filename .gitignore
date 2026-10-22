@@ -18,3 +18,10 @@ local.properties
 *.jks
 *.keystore
 keystore.properties
+
+# Build artifacts & logs
+*.apk
+*.aab
+*.zip
+run*_logs/
+monitor*.ps1

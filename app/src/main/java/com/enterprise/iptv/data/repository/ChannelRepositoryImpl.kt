@@ -63,65 +63,82 @@ class ChannelRepositoryImpl @Inject constructor(
                 }
 
                 val body = response.body ?: return@withContext Result.failure(Exception("Empty body"))
-
-                val regexGroup = """group-title="([^"]*)"""".toRegex()
-                val regexLogo = """tvg-logo="([^"]*)"""".toRegex()
-                val regexCountry = """tvg-country="([^"]*)"""".toRegex()
-                val regexLanguage = """tvg-language="([^"]*)"""".toRegex()
-
-                val buffer = mutableListOf<ChannelEntity>()
-                var totalInserted = 0
-
-                var currentName = ""
-                var currentLogo: String? = null
-                var currentGroup = "عام"
-                var currentCountry: String? = null
-                var currentLanguage: String? = null
-
-                BufferedReader(InputStreamReader(body.byteStream())).use { reader ->
-                    var line: String?
-                    while (reader.readLine().also { line = it } != null) {
-                        val trimmed = line!!.trim()
-                        if (trimmed.startsWith("#EXTINF:")) {
-                            currentGroup = regexGroup.find(trimmed)?.groupValues?.get(1) ?: "عام"
-                            currentLogo = regexLogo.find(trimmed)?.groupValues?.get(1)
-                            currentCountry = regexCountry.find(trimmed)?.groupValues?.get(1)
-                            currentLanguage = regexLanguage.find(trimmed)?.groupValues?.get(1)
-                            currentName = trimmed.substringAfterLast(",").trim()
-                        } else if (trimmed.isNotBlank() && !trimmed.startsWith("#")) {
-                            val streamUrl = trimmed
-                            buffer.add(
-                                ChannelEntity(
-                                    id = UUID.randomUUID().toString(),
-                                    name = currentName.ifBlank { "Channel" },
-                                    streamUrl = streamUrl,
-                                    logoUrl = currentLogo,
-                                    groupTitle = currentGroup,
-                                    countryCode = currentCountry,
-                                    languageCode = currentLanguage,
-                                    isFavorite = false,
-                                    playlistId = playlistId
-                                )
-                            )
-
-                            if (buffer.size >= 100) {
-                                channelDao.insertChannels(buffer)
-                                totalInserted += buffer.size
-                                buffer.clear()
-                            }
-                            currentName = ""
-                            currentLogo = null
-                        }
-                    }
-                    if (buffer.isNotEmpty()) {
-                        channelDao.insertChannels(buffer)
-                        totalInserted += buffer.size
-                        buffer.clear()
-                    }
-                }
-                Result.success(totalInserted)
+                val total = parseAndInsertM3u(BufferedReader(InputStreamReader(body.byteStream())), playlistId)
+                Result.success(total)
             } catch (e: Exception) {
                 Result.failure(e)
             }
         }
+
+    override suspend fun importM3uFromInputStream(inputStream: java.io.InputStream, playlistId: String): Result<Int> =
+        withContext(Dispatchers.IO) {
+            try {
+                val total = parseAndInsertM3u(BufferedReader(InputStreamReader(inputStream)), playlistId)
+                Result.success(total)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+
+    private suspend fun parseAndInsertM3u(reader: BufferedReader, playlistId: String): Int {
+        val regexGroup = """group-title="([^"]*)"""".toRegex()
+        val regexLogo = """tvg-logo="([^"]*)"""".toRegex()
+        val regexCountry = """tvg-country="([^"]*)"""".toRegex()
+        val regexLanguage = """tvg-language="([^"]*)"""".toRegex()
+
+        val buffer = mutableListOf<ChannelEntity>()
+        var totalInserted = 0
+
+        var currentName = ""
+        var currentLogo: String? = null
+        var currentGroup = "عام"
+        var currentCountry: String? = null
+        var currentLanguage: String? = null
+
+        reader.use { r ->
+            var line: String?
+            while (r.readLine().also { line = it } != null) {
+                val trimmed = line!!.trim()
+                if (trimmed.startsWith("#EXTINF:")) {
+                    currentGroup = regexGroup.find(trimmed)?.groupValues?.get(1) ?: "عام"
+                    currentLogo = regexLogo.find(trimmed)?.groupValues?.get(1)
+                    currentCountry = regexCountry.find(trimmed)?.groupValues?.get(1)
+                    currentLanguage = regexLanguage.find(trimmed)?.groupValues?.get(1)
+                    currentName = trimmed.substringAfterLast(",").trim()
+                } else if (trimmed.isNotBlank() && !trimmed.startsWith("#")) {
+                    val streamUrl = trimmed
+                    buffer.add(
+                        ChannelEntity(
+                            id = UUID.randomUUID().toString(),
+                            name = currentName.ifBlank { "Channel" },
+                            streamUrl = streamUrl,
+                            logoUrl = currentLogo,
+                            groupTitle = currentGroup,
+                            countryCode = currentCountry,
+                            languageCode = currentLanguage,
+                            isFavorite = false,
+                            playlistId = playlistId
+                        )
+                    )
+
+                    if (buffer.size >= 100) {
+                        channelDao.insertChannels(buffer)
+                        totalInserted += buffer.size
+                        buffer.clear()
+                    }
+                    currentName = ""
+                    currentLogo = null
+                    currentGroup = "عام"
+                    currentCountry = null
+                    currentLanguage = null
+                }
+            }
+            if (buffer.isNotEmpty()) {
+                channelDao.insertChannels(buffer)
+                totalInserted += buffer.size
+                buffer.clear()
+            }
+        }
+        return totalInserted
+    }
 }

@@ -1,6 +1,10 @@
 package com.enterprise.iptv
 
+import android.app.PictureInPictureParams
+import android.content.res.Configuration
+import android.os.Build
 import android.os.Bundle
+import android.util.Rational
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -31,8 +35,48 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             EnterpriseIPTVTheme {
-                ChannelScreen(viewModel = viewModel)
+                ChannelScreen(
+                    viewModel = viewModel,
+                    onEnterPip = { enterPipMode() }
+                )
             }
         }
+    }
+
+    fun enterPipMode() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            try {
+                val aspectRatio = Rational(16, 9)
+                val paramsBuilder = PictureInPictureParams.Builder()
+                    .setAspectRatio(aspectRatio)
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    paramsBuilder.setAutoEnterEnabled(true)
+                    paramsBuilder.setSeamlessResizeEnabled(true)
+                }
+
+                enterPictureInPictureMode(paramsBuilder.build())
+            } catch (e: Exception) {
+                // Ignore if PiP not supported on specific device
+            }
+        }
+    }
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        // الدخول التلقائي في وضع النافذة العائمة عند الخروج للشاشة الرئيسية أثناء تشغيل البث
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (viewModel.playerEngine.exoPlayer.isPlaying) {
+                enterPipMode()
+            }
+        }
+    }
+
+    override fun onPictureInPictureModeChanged(
+        isInPictureInPictureMode: Boolean,
+        newConfig: Configuration
+    ) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        viewModel.setPipMode(isInPictureInPictureMode)
     }
 }

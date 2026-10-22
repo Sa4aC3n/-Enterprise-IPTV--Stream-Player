@@ -17,6 +17,7 @@ interface ChannelRepository {
 
     suspend fun toggleFavorite(channelId: String, isFav: Boolean)
     suspend fun importM3uFromUrl(playlistUrl: String, playlistId: String): Result<Int>
+    suspend fun importM3uFromInputStream(inputStream: java.io.InputStream, playlistId: String): Result<Int>
     suspend fun getChannelsCount(): Int
 
     suspend fun initializeDefaultChannels(): Boolean

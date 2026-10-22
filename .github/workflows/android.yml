@@ -60,13 +60,13 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        TAG="v1.0.0-vc2-run${{ github.run_number }}"
+        TAG="v1.1.0-vc4-run${{ github.run_number }}"
         gh release create "$TAG" \
           app/build/outputs/bundle/release/*.aab \
           app/build/outputs/apk/release/*.apk \
           upload-keystore.jks \
-          --title "Enterprise IPTV v1.0.0 (VersionCode 2)" \
-          --notes "Production Release build targeting API 36 with full R8 DEX optimization." || true
+          --title "Enterprise IPTV v1.1.0 (VersionCode 4)" \
+          --notes "Major feature release: Multi-View Quad-Screen (2 to 4 channels), 24h EPG Guide, Kids Safe Space with PIN, Stream Auto-Healing, PiP, and Fast Zapping." || true
 
     - name: Upload Production AAB Artifact (For Google Play)
       uses: actions/upload-artifact@v4
