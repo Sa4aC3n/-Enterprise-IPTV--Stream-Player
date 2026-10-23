@@ -3368,6 +3368,107 @@ fun ClosedCaptionsDialog(
 }
 
 /**
+ * نافذة اختيار سرعة تشغيل التسجيلات والفيديوهات المحلية (Playback Speed Dialog)
+ * خيارات دقيقة من 0.5x إلى 2.0x مع الحفاظ الآلي على نبرة الصوت (Pitch Correction)
+ */
+@Composable
+fun PlaybackSpeedDialog(
+    currentSpeed: Float,
+    onSelectSpeed: (Float) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val speeds = listOf(
+        0.5f to "0.5x • بطيء جداً",
+        0.75f to "0.75x • بطيء",
+        1.0f to "1.0x • السرعة الطبيعية (افتراضي)",
+        1.25f to "1.25x • سريع (1.25x)",
+        1.5f to "1.5x • سريع جداً (1.5x)",
+        2.0f to "2.0x • أقصى سرعة (2.0x)"
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Speed,
+                    contentDescription = null,
+                    tint = AccentTeal,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(Modifier.width(10.dp))
+                Column {
+                    Text(
+                        text = "⚡ سرعة تشغيل التسجيل",
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = "مع الحفاظ التلقائي على طبقة ونقاء الصوت",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextSecondary
+                    )
+                }
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                speeds.forEach { (speed, label) ->
+                    val isSelected = kotlin.math.abs(speed - currentSpeed) < 0.05f
+                    Surface(
+                        onClick = {
+                            onSelectSpeed(speed)
+                            onDismiss()
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (isSelected) AccentTeal.copy(alpha = 0.2f) else DarkCard,
+                        border = BorderStroke(1.dp, if (isSelected) AccentTeal else DarkBorder),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) NeonCyan else Color.White
+                            )
+                            RadioButton(
+                                selected = isSelected,
+                                onClick = {
+                                    onSelectSpeed(speed)
+                                    onDismiss()
+                                },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = AccentTeal,
+                                    unselectedColor = TextSecondary
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("إغلاق", color = AccentTeal, fontWeight = FontWeight.Bold)
+            }
+        },
+        containerColor = DarkBackground,
+        shape = RoundedCornerShape(16.dp)
+    )
+}
+
+/**
  * نافذة الاستماع والتفاعل مع الأوامر الصوتية الذكية (Voice Command Dialog)
  * تصميم نيون مع نبضات ضوئية تفاعلية وعرض حي للنص المسموع
  */
@@ -3754,11 +3855,13 @@ fun VideoPlayerContainer(
     val selectedSubtitle by playerEngine.selectedSubtitle.collectAsState()
     val isLiveSpeechCaptionsActive by playerEngine.isLiveSpeechCaptionsActive.collectAsState()
     val networkStats by playerEngine.networkStats.collectAsState()
+    val playbackSpeed by playerEngine.playbackSpeed.collectAsState()
 
     var showControls by remember { mutableStateOf(true) }
     var showSettingsDialog by remember { mutableStateOf(false) }
     var showChaptersDialog by remember { mutableStateOf(false) }
     var showCaptionsDialog by remember { mutableStateOf(false) }
+    var showSpeedDialog by remember { mutableStateOf(false) }
     var showOsd by remember { mutableStateOf(false) }
     var dspBadgeMessage by remember { mutableStateOf<String?>(null) }
     var gestureHudState by remember { mutableStateOf<GestureHudState>(GestureHudState.Hidden) }
@@ -4214,6 +4317,26 @@ fun VideoPlayerContainer(
                             }
                         }
 
+                        // 1.35 زر سرعة تشغيل التسجيلات (Playback Speed)
+                        if (!isLiveStream) {
+                            Surface(
+                                onClick = { showSpeedDialog = true },
+                                shape = CircleShape,
+                                color = Color.Black.copy(alpha = 0.65f),
+                                border = BorderStroke(1.dp, if (playbackSpeed != 1.0f) NeonCyan else Color.Transparent),
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = "${playbackSpeed}x".replace(".0x", "x"),
+                                        color = if (playbackSpeed != 1.0f) NeonCyan else AccentTeal,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+
                         // 1.4 زر الترجمة التوضيحية الفورية (Closed Captions)
                         IconButton(
                             onClick = { showCaptionsDialog = true },
@@ -4401,6 +4524,21 @@ fun VideoPlayerContainer(
                                     fontSize = 12.sp,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Surface(
+                                onClick = { playerEngine.cyclePlaybackSpeed() },
+                                shape = RoundedCornerShape(6.dp),
+                                color = if (playbackSpeed != 1.0f) AccentTeal.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.12f),
+                                border = BorderStroke(1.dp, if (playbackSpeed != 1.0f) AccentTeal else Color.White.copy(alpha = 0.2f))
+                            ) {
+                                Text(
+                                    text = "${playbackSpeed}x".replace(".0x", "x"),
+                                    color = if (playbackSpeed != 1.0f) NeonCyan else Color.White,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                 )
                             }
                             Spacer(Modifier.width(8.dp))
@@ -5048,6 +5186,51 @@ fun VideoPlayerContainer(
                             }
                         }
                     }
+
+                    // 4. قسم سرعة التشغيل للتسجيلات (إن لم يكن بثاً مباشراً)
+                    if (!isLiveStream) {
+                        item {
+                            Spacer(Modifier.height(8.dp))
+                            HorizontalDivider(color = DarkBorder)
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = "سرعة تشغيل الفيديو (Playback Speed)",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = AccentTeal,
+                                modifier = Modifier.padding(vertical = 6.dp)
+                            )
+
+                            val speedsList = listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                speedsList.forEach { sp ->
+                                    val isSel = kotlin.math.abs(sp - playbackSpeed) < 0.05f
+                                    Surface(
+                                        onClick = { playerEngine.setPlaybackSpeed(sp) },
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = if (isSel) AccentTeal else DarkCard,
+                                        border = BorderStroke(1.dp, if (isSel) AccentTeal else DarkBorder),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier.padding(vertical = 8.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = "${sp}x".replace(".0x", "x"),
+                                                color = if (isSel) Color.Black else Color.White,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 11.sp
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             },
             confirmButton = {
@@ -5081,6 +5264,15 @@ fun VideoPlayerContainer(
             onSelectSubtitle = { playerEngine.selectSubtitleTrack(it) },
             onToggleLiveSpeech = { playerEngine.toggleLiveSpeechCaptions() },
             onDismiss = { showCaptionsDialog = false }
+        )
+    }
+
+    // نافذة سرعة التشغيل للتسجيلات والفيديوهات المحلية (Playback Speed Dialog)
+    if (showSpeedDialog) {
+        PlaybackSpeedDialog(
+            currentSpeed = playbackSpeed,
+            onSelectSpeed = { playerEngine.setPlaybackSpeed(it) },
+            onDismiss = { showSpeedDialog = false }
         )
     }
 }

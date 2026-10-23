@@ -5,6 +5,7 @@ import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
 import androidx.media3.common.text.CueGroup
@@ -146,6 +147,10 @@ class PlayerEngine @Inject constructor(
     // وضع الاستماع الصوتي فقط وموفر البيانات (Audio-Only Mode)
     private val _isAudioOnly = MutableStateFlow(false)
     val isAudioOnly = _isAudioOnly.asStateFlow()
+
+    // سرعة تشغيل التسجيلات والفيديو (Playback Speed: 0.5x, 0.75x, 1.0x, 1.25x, 1.5x, 2.0x)
+    private val _playbackSpeed = MutableStateFlow(1.0f)
+    val playbackSpeed = _playbackSpeed.asStateFlow()
 
     private val playerListener = object : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {
@@ -348,6 +353,7 @@ class PlayerEngine @Inject constructor(
 
     fun playChannel(streamUrl: String, backupUrls: List<String> = emptyList()) {
         dataUsageMeter.resetCurrentStreamCounter()
+        setPlaybackSpeed(1.0f)
         _isLiveStream.value = true
         _smartChapters.value = emptyList()
         _currentChapter.value = null
@@ -460,6 +466,21 @@ class PlayerEngine @Inject constructor(
         }
     }
 
+    fun setPlaybackSpeed(speed: Float) {
+        val clamped = speed.coerceIn(0.25f, 3.0f)
+        _playbackSpeed.value = clamped
+        exoPlayer.playbackParameters = PlaybackParameters(clamped, 1.0f)
+    }
+
+    fun cyclePlaybackSpeed(): Float {
+        val speeds = listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f)
+        val currentIndex = speeds.indexOfFirst { kotlin.math.abs(it - _playbackSpeed.value) < 0.05f }
+        val nextIndex = if (currentIndex != -1) (currentIndex + 1) % speeds.size else 2
+        val nextSpeed = speeds[nextIndex]
+        setPlaybackSpeed(nextSpeed)
+        return nextSpeed
+    }
+
     fun toggleAudioOnly() {
         val next = !_isAudioOnly.value
         _isAudioOnly.value = next
@@ -543,6 +564,7 @@ class PlayerEngine @Inject constructor(
 
     fun playFile(file: java.io.File) {
         dataUsageMeter.resetCurrentStreamCounter()
+        setPlaybackSpeed(1.0f)
         _isLiveStream.value = false
         _smartChapters.value = emptyList()
         _currentChapter.value = null

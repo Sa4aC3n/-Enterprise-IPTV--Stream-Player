@@ -81,6 +81,17 @@ class ChannelsViewModel @Inject constructor(
     // إحصائيات استهلاك البيانات والسرعة اللحظية للبث (Data Usage & Speed Meter)
     val networkStats = playerEngine.networkStats
 
+    // سرعة تشغيل التسجيلات (Playback Speed)
+    val playbackSpeed = playerEngine.playbackSpeed
+
+    fun setPlaybackSpeed(speed: Float) {
+        playerEngine.setPlaybackSpeed(speed)
+    }
+
+    fun cyclePlaybackSpeed(): Float {
+        return playerEngine.cyclePlaybackSpeed()
+    }
+
     // حالة وأجهزة البث للشاشات الذكية (DLNA / Cast)
     val discoveredCastDevices = castManager.discoveredDevices
     val isScanningForCast = castManager.isScanning
