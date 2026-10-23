@@ -7,6 +7,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
+import androidx.media3.common.text.CueGroup
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
@@ -18,12 +19,17 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
 import com.enterprise.iptv.domain.audio.VocalDspAudioProcessor
 import com.enterprise.iptv.domain.audio.VocalDspMode
+import com.enterprise.iptv.domain.caption.OnDeviceCaptionEngine
+import com.enterprise.iptv.domain.caption.SubtitleTrack
 import com.enterprise.iptv.domain.chapter.SmartChapter
 import com.enterprise.iptv.domain.chapter.SmartChapterManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -52,13 +58,35 @@ data class StreamServer(
 class PlayerEngine @Inject constructor(
     @ApplicationContext private val context: Context,
     val vocalDspProcessor: VocalDspAudioProcessor,
-    val smartChapterManager: SmartChapterManager
+    val smartChapterManager: SmartChapterManager,
+    val onDeviceCaptionEngine: OnDeviceCaptionEngine
 ) {
     private val _playbackStatus = MutableStateFlow<PlaybackStatus>(PlaybackStatus.Idle)
     val playbackStatus = _playbackStatus.asStateFlow()
 
     // معالج الصوت الترددي اللحظي (عازل الصوت وموضح الكلام)
     val vocalDspMode = vocalDspProcessor.currentMode
+
+    // الترجمة التوضيحية الفورية (Captions & Subtitles)
+    private val _availableSubtitles = MutableStateFlow<List<SubtitleTrack>>(emptyList())
+    val availableSubtitles = _availableSubtitles.asStateFlow()
+
+    private val _selectedSubtitle = MutableStateFlow<SubtitleTrack?>(null)
+    val selectedSubtitle = _selectedSubtitle.asStateFlow()
+
+    private val _isCaptionsEnabled = MutableStateFlow(false)
+    val isCaptionsEnabled = _isCaptionsEnabled.asStateFlow()
+
+    private val _embeddedSubtitleText = MutableStateFlow("")
+
+    val liveSpeechCaptionsText = onDeviceCaptionEngine.liveCaptionsText
+    val isLiveSpeechCaptionsActive = onDeviceCaptionEngine.isActive
+
+    // دمج الترجمة المدمجة مع التفريغ الصوتي اللحظي أوفلاين
+    val currentCaptionText = combine(_embeddedSubtitleText, liveSpeechCaptionsText, _isCaptionsEnabled) { embedded, live, enabled ->
+        if (!enabled) ""
+        else embedded.ifBlank { live }
+    }.stateIn(playerScope, SharingStarted.WhileSubscribed(5000), "")
 
     // الفصول الذكية للتسجيلات (Smart Chapters) ومؤشرات التوقيت
     private val _smartChapters = MutableStateFlow<List<SmartChapter>>(emptyList())
@@ -135,8 +163,14 @@ class PlayerEngine @Inject constructor(
             }
         }
 
+        override fun onCues(cueGroup: CueGroup) {
+            val texts = cueGroup.cues.mapNotNull { it.text?.toString() }
+            _embeddedSubtitleText.value = texts.joinToString("\n")
+        }
+
         override fun onTracksChanged(tracks: Tracks) {
             extractAvailableQualities(tracks)
+            extractAvailableSubtitles(tracks)
         }
     }
 
@@ -210,12 +244,85 @@ class PlayerEngine @Inject constructor(
         _availableQualities.value = qualities.distinctBy { it.height }.sortedByDescending { it.height }
     }
 
+    private fun extractAvailableSubtitles(tracks: Tracks) {
+        val subs = mutableListOf<SubtitleTrack>()
+        for ((groupIndex, group) in tracks.groups.withIndex()) {
+            if (group.type == C.TRACK_TYPE_TEXT) {
+                for (trackIndex in 0 until group.length) {
+                    val format = group.getTrackFormat(trackIndex)
+                    val id = format.id ?: "$groupIndex-$trackIndex"
+                    val lang = format.language
+                    val label = format.label ?: ""
+                    val isSelected = group.isTrackSelected(trackIndex)
+                    subs.add(
+                        SubtitleTrack(
+                            id = id,
+                            language = lang,
+                            label = label,
+                            groupIndex = groupIndex,
+                            trackIndex = trackIndex,
+                            isSelected = isSelected
+                        )
+                    )
+                }
+            }
+        }
+        _availableSubtitles.value = subs
+        val selected = subs.firstOrNull { it.isSelected }
+        _selectedSubtitle.value = selected
+        if (selected != null) {
+            _isCaptionsEnabled.value = true
+        }
+    }
+
+    fun selectSubtitleTrack(track: SubtitleTrack?) {
+        _selectedSubtitle.value = track
+        if (track == null) {
+            _isCaptionsEnabled.value = false
+            _embeddedSubtitleText.value = ""
+            exoPlayer.trackSelectionParameters = exoPlayer.trackSelectionParameters
+                .buildUpon()
+                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+                .build()
+        } else {
+            _isCaptionsEnabled.value = true
+            exoPlayer.trackSelectionParameters = exoPlayer.trackSelectionParameters
+                .buildUpon()
+                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                .setPreferredTextLanguage(track.language)
+                .build()
+        }
+    }
+
+    fun toggleCaptions() {
+        val currentlyEnabled = _isCaptionsEnabled.value
+        if (currentlyEnabled) {
+            selectSubtitleTrack(null)
+            onDeviceCaptionEngine.stopListening()
+            _isCaptionsEnabled.value = false
+        } else {
+            val first = _availableSubtitles.value.firstOrNull()
+            if (first != null) {
+                selectSubtitleTrack(first)
+            } else {
+                _isCaptionsEnabled.value = true
+                onDeviceCaptionEngine.startListening()
+            }
+        }
+    }
+
+    fun toggleLiveSpeechCaptions() {
+        val active = onDeviceCaptionEngine.toggleListening()
+        _isCaptionsEnabled.value = active || _selectedSubtitle.value != null
+    }
+
     fun playChannel(streamUrl: String, backupUrls: List<String> = emptyList()) {
         _isLiveStream.value = true
         _smartChapters.value = emptyList()
         _currentChapter.value = null
         _durationMs.value = 0L
         _currentPositionMs.value = 0L
+        _embeddedSubtitleText.value = ""
         val allUrls = (listOf(streamUrl) + backupUrls).filter { it.isNotBlank() }.distinct()
         val serverList = allUrls.mapIndexed { index, url ->
             val label = if (index == 0) "سيرفر 1 (رئيسي)" else "سيرفر ${index + 1} (بديل)"
@@ -393,6 +500,7 @@ class PlayerEngine @Inject constructor(
         _currentChapter.value = null
         _durationMs.value = 0L
         _currentPositionMs.value = 0L
+        _embeddedSubtitleText.value = ""
         _servers.value = listOf(StreamServer("تسجيل محلي", file.absolutePath))
         _currentServerIndex.value = 0
         playUrlInternal(android.net.Uri.fromFile(file).toString())
@@ -405,6 +513,7 @@ class PlayerEngine @Inject constructor(
     fun release() {
         progressTickerJob?.cancel()
         playerScope.cancel()
+        onDeviceCaptionEngine.stopListening()
         exoPlayer.removeListener(playerListener)
         exoPlayer.release()
     }

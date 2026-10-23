@@ -62,6 +62,7 @@ import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.enterprise.iptv.R
 import com.enterprise.iptv.domain.audio.VocalDspMode
+import com.enterprise.iptv.domain.caption.SubtitleTrack
 import com.enterprise.iptv.domain.cast.CastDevice
 import com.enterprise.iptv.domain.cast.CastState
 import com.enterprise.iptv.domain.chapter.SmartChapter
@@ -2990,6 +2991,216 @@ fun SmartChaptersDialog(
 }
 
 /**
+ * نافذة إعدادات الترجمة التوضيحية الفورية (Subtitles & Live Captions)
+ */
+@Composable
+fun ClosedCaptionsDialog(
+    isCaptionsEnabled: Boolean,
+    availableSubtitles: List<SubtitleTrack>,
+    selectedSubtitle: SubtitleTrack?,
+    isLiveSpeechCaptionsActive: Boolean,
+    onToggleCaptions: () -> Unit,
+    onSelectSubtitle: (SubtitleTrack?) -> Unit,
+    onToggleLiveSpeech: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.ClosedCaption,
+                    contentDescription = null,
+                    tint = AccentTeal,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(Modifier.width(10.dp))
+                Column {
+                    Text(
+                        text = "💬 الترجمة التوضيحية (Captions)",
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = "ترجمة مدمجة وتفريغ صوتي لحظي أوفلاين",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextSecondary
+                    )
+                }
+            }
+        },
+        text = {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                // المفتاح العام لتشغيل/إيقاف الترجمة
+                item {
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = AccentTeal.copy(alpha = 0.12f),
+                        border = BorderStroke(1.dp, AccentTeal.copy(alpha = 0.3f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onToggleCaptions() }
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "تفعيل الترجمة التوضيحية",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "عرض نصوص الحوار المباشر أسفل الفيديو",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = TextSecondary
+                                )
+                            }
+                            Switch(
+                                checked = isCaptionsEnabled,
+                                onCheckedChange = { onToggleCaptions() },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = AccentTeal,
+                                    checkedTrackColor = AccentTeal.copy(alpha = 0.5f)
+                                )
+                            )
+                        }
+                    }
+                }
+
+                // مسارات الترجمة المدمجة بالبث
+                if (availableSubtitles.isNotEmpty()) {
+                    item {
+                        Text(
+                            text = "مسارات الترجمة المدمجة (${availableSubtitles.size})",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = AccentTeal,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
+
+                    item {
+                        Surface(
+                            onClick = { onSelectSubtitle(null) },
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (selectedSubtitle == null && !isLiveSpeechCaptionsActive) AccentTeal.copy(alpha = 0.15f) else DarkCard,
+                            border = BorderStroke(1.dp, if (selectedSubtitle == null && !isLiveSpeechCaptionsActive) AccentTeal else DarkBorder),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = selectedSubtitle == null && !isLiveSpeechCaptionsActive,
+                                    onClick = { onSelectSubtitle(null) }
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text("إيقاف الترجمة المدمجة", style = MaterialTheme.typography.bodySmall, color = Color.White)
+                            }
+                        }
+                    }
+
+                    items(availableSubtitles) { track ->
+                        val isSelected = selectedSubtitle?.id == track.id
+                        Surface(
+                            onClick = { onSelectSubtitle(track) },
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (isSelected) AccentTeal.copy(alpha = 0.18f) else DarkCard,
+                            border = BorderStroke(1.dp, if (isSelected) AccentTeal else DarkBorder),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = isSelected,
+                                    onClick = { onSelectSubtitle(track) }
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(track.displayTitle, style = MaterialTheme.typography.bodySmall, color = if (isSelected) AccentTeal else Color.White)
+                            }
+                        }
+                    }
+                }
+
+                // التفريغ الصوتي اللحظي المحلي أوفلاين
+                item {
+                    Spacer(Modifier.height(4.dp))
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = DarkCard,
+                        border = BorderStroke(1.dp, if (isLiveSpeechCaptionsActive) NeonCyan else DarkBorder),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onToggleLiveSpeech() }
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.RecordVoiceOver,
+                                    contentDescription = null,
+                                    tint = if (isLiveSpeechCaptionsActive) NeonCyan else Color.White,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                                Spacer(Modifier.width(10.dp))
+                                Column {
+                                    Text(
+                                        text = "التفريغ الصوتي اللحظي (On-Device STT)",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                    Text(
+                                        text = "تفريغ صوتي أوفلاين على معالج الجهاز دون إنترنت",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = TextSecondary
+                                    )
+                                }
+                            }
+                            Switch(
+                                checked = isLiveSpeechCaptionsActive,
+                                onCheckedChange = { onToggleLiveSpeech() },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = NeonCyan,
+                                    checkedTrackColor = NeonCyan.copy(alpha = 0.5f)
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("تم", color = AccentTeal, fontWeight = FontWeight.Bold)
+            }
+        },
+        containerColor = DarkSurface,
+        titleContentColor = Color.White,
+        textContentColor = Color.White
+    )
+}
+
+/**
  * نافذة جدول برامج القناة (EPG Schedule Dialog) لليوم بالكامل
  */
 @Composable
@@ -3202,10 +3413,16 @@ fun VideoPlayerContainer(
     val currentPositionMs by playerEngine.currentPositionMs.collectAsState()
     val durationMs by playerEngine.durationMs.collectAsState()
     val isLiveStream by playerEngine.isLiveStream.collectAsState()
+    val isCaptionsEnabled by playerEngine.isCaptionsEnabled.collectAsState()
+    val currentCaptionText by playerEngine.currentCaptionText.collectAsState()
+    val availableSubtitles by playerEngine.availableSubtitles.collectAsState()
+    val selectedSubtitle by playerEngine.selectedSubtitle.collectAsState()
+    val isLiveSpeechCaptionsActive by playerEngine.isLiveSpeechCaptionsActive.collectAsState()
 
     var showControls by remember { mutableStateOf(true) }
     var showSettingsDialog by remember { mutableStateOf(false) }
     var showChaptersDialog by remember { mutableStateOf(false) }
+    var showCaptionsDialog by remember { mutableStateOf(false) }
     var showOsd by remember { mutableStateOf(false) }
     var dspBadgeMessage by remember { mutableStateOf<String?>(null) }
 
@@ -3257,6 +3474,35 @@ fun VideoPlayerContainer(
             },
             modifier = Modifier.fillMaxSize()
         )
+
+        // شريط عرض الترجمة التوضيحية السينمائي (Subtitle & Live Captions Overlay)
+        if (isCaptionsEnabled && currentCaptionText.isNotBlank()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = if (showControls && !isLiveStream && durationMs > 0) 130.dp else if (showControls) 70.dp else 24.dp),
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                Surface(
+                    color = Color.Black.copy(alpha = 0.82f),
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
+                ) {
+                    Text(
+                        text = currentCaptionText,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                            lineHeight = 22.sp
+                        ),
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                    )
+                }
+            }
+        }
 
         // واجهة نمط الاستماع الصوتي الموفر للباقة والبطارية
         if (isAudioOnly) {
@@ -3612,6 +3858,21 @@ fun VideoPlayerContainer(
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
+                        }
+
+                        // 1.4 زر الترجمة التوضيحية الفورية (Closed Captions)
+                        IconButton(
+                            onClick = { showCaptionsDialog = true },
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(Color.Black.copy(alpha = 0.65f), CircleShape)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ClosedCaption,
+                                contentDescription = "الترجمة التوضيحية (Captions)",
+                                tint = if (isCaptionsEnabled) NeonCyan else AccentTeal,
+                                modifier = Modifier.size(20.dp)
+                            )
                         }
 
                         // 1. زر الترس: يفتح إعدادات جودة البث والسيرفرات البديلة
@@ -4322,6 +4583,20 @@ fun VideoPlayerContainer(
             currentChapter = currentChapter,
             onSeekToChapter = { playerEngine.seekToChapter(it) },
             onDismiss = { showChaptersDialog = false }
+        )
+    }
+
+    // نافذة إعدادات الترجمة التوضيحية الفورية (Closed Captions Dialog)
+    if (showCaptionsDialog) {
+        ClosedCaptionsDialog(
+            isCaptionsEnabled = isCaptionsEnabled,
+            availableSubtitles = availableSubtitles,
+            selectedSubtitle = selectedSubtitle,
+            isLiveSpeechCaptionsActive = isLiveSpeechCaptionsActive,
+            onToggleCaptions = { playerEngine.toggleCaptions() },
+            onSelectSubtitle = { playerEngine.selectSubtitleTrack(it) },
+            onToggleLiveSpeech = { playerEngine.toggleLiveSpeechCaptions() },
+            onDismiss = { showCaptionsDialog = false }
         )
     }
 }
