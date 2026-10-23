@@ -25,3 +25,6 @@ keystore.properties
 *.zip
 run*_logs/
 monitor*.ps1
+check_*.ps1
+rerun_*.ps1
+IPTV_FULL_PROJECT_CODEBASE.txt

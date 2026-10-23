@@ -4,6 +4,9 @@ import android.content.ContentResolver
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.enterprise.iptv.domain.cast.CastDevice
+import com.enterprise.iptv.domain.cast.CastState
+import com.enterprise.iptv.domain.cast.DlnaCastManager
 import com.enterprise.iptv.domain.epg.EpgManager
 import com.enterprise.iptv.domain.healing.ServerHealth
 import com.enterprise.iptv.domain.healing.StreamAutoHealer
@@ -60,12 +63,19 @@ class ChannelsViewModel @Inject constructor(
     private val streamRecorder: StreamRecorder,
     val epgManager: EpgManager,
     val kidsSpaceManager: KidsSpaceManager,
-    val autoHealer: StreamAutoHealer
+    val autoHealer: StreamAutoHealer,
+    val castManager: DlnaCastManager
 ) : ViewModel() {
 
     val isMultiViewActive = multiViewManager.isActive
     val multiViewLayout = multiViewManager.layout
     val isKidsModeActive = kidsSpaceManager.isKidsModeActive
+
+    // حالة وأجهزة البث للشاشات الذكية (DLNA / Cast)
+    val discoveredCastDevices = castManager.discoveredDevices
+    val isScanningForCast = castManager.isScanning
+    val activeCastDevice = castManager.activeCastDevice
+    val castState = castManager.castState
 
     private val _autoHealStatus = MutableStateFlow<String?>(null)
     val autoHealStatus = _autoHealStatus.asStateFlow()
@@ -425,10 +435,45 @@ class ChannelsViewModel @Inject constructor(
         }
     }
 
+    // --- وظائف البث للشاشات الذكية (DLNA / Cast) ---
+
+    fun startCastDiscovery() {
+        castManager.startDiscovery()
+    }
+
+    fun stopCastDiscovery() {
+        castManager.stopDiscovery()
+    }
+
+    fun castRecordingToDevice(file: File, device: CastDevice) {
+        playerEngine.pause()
+        castManager.castRecording(file, device)
+    }
+
+    fun castCurrentChannelToDevice(device: CastDevice) {
+        val channel = _currentChannel.value ?: return
+        playerEngine.pause()
+        castManager.castLiveStream(channel.streamUrl, channel.name, device)
+    }
+
+    fun toggleCastPlayback() {
+        when (castState.value) {
+            is CastState.Playing -> castManager.pause()
+            is CastState.Paused, is CastState.Connected -> castManager.play()
+            else -> {}
+        }
+    }
+
+    fun disconnectCast() {
+        castManager.stop()
+        playerEngine.play()
+    }
+
     override fun onCleared() {
         super.onCleared()
         playerEngine.release()
         multiViewManager.release()
+        castManager.stop()
         recordingJob?.cancel()
         sleepTimerJob?.cancel()
     }

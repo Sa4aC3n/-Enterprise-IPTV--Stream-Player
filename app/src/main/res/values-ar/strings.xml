@@ -52,4 +52,15 @@
     <string name="settings_dev_apps_desc">تصفح كافة التطبيقات والإصدارات الصادرة من فريقنا</string>
     <string name="settings_privacy_policy">سياسة الخصوصية</string>
     <string name="settings_terms_of_service">شروط الاستخدام</string>
+
+    <!-- نصوص البث للشاشات الذكية DLNA / Cast -->
+    <string name="btn_cast">بث إلى الشاشة</string>
+    <string name="cast_title">البث للشاشات الذكية (DLNA / Cast)</string>
+    <string name="cast_searching">جاري البحث عن الشاشات وأجهزة التلفزيون على شبكة Wi-Fi...</string>
+    <string name="cast_no_devices">لم يتم العثور على شاشات. تأكد من اتصال الهاتف والتلفزيون بنفس شبكة Wi-Fi.</string>
+    <string name="cast_connected_to">متصل حالياً بشاشة: %1$s</string>
+    <string name="cast_disconnect">قطع الاتصال بالشاشة</string>
+    <string name="cast_play">تشغيل على التلفاز</string>
+    <string name="cast_pause">إيقاف مؤقت على التلفاز</string>
+    <string name="cast_recording_action">بث التسجيل للشاشة</string>
 </resources>

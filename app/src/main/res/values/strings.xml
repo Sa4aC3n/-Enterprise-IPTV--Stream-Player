@@ -52,4 +52,15 @@
     <string name="settings_dev_apps_desc">Explore all our latest apps and media releases</string>
     <string name="settings_privacy_policy">Privacy Policy</string>
     <string name="settings_terms_of_service">Terms of Service</string>
+
+    <!-- DLNA / Smart TV Cast Strings -->
+    <string name="btn_cast">Cast to TV</string>
+    <string name="cast_title">Cast to Smart Screen</string>
+    <string name="cast_searching">Searching for Smart TVs on Wi-Fi...</string>
+    <string name="cast_no_devices">No Smart TVs found. Ensure TV and phone are on the same Wi-Fi.</string>
+    <string name="cast_connected_to">Connected to %1$s</string>
+    <string name="cast_disconnect">Disconnect Screen</string>
+    <string name="cast_play">Play on TV</string>
+    <string name="cast_pause">Pause on TV</string>
+    <string name="cast_recording_action">Cast Recording</string>
 </resources>

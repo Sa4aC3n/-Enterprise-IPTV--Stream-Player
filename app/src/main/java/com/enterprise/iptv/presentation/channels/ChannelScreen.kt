@@ -61,9 +61,12 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.enterprise.iptv.R
+import com.enterprise.iptv.domain.cast.CastDevice
+import com.enterprise.iptv.domain.cast.CastState
 import com.enterprise.iptv.domain.model.Channel
 import com.enterprise.iptv.domain.model.EpgProgram
 import com.enterprise.iptv.domain.recorder.RecordState
+import com.enterprise.iptv.presentation.cast.CastDeviceDialog
 import com.enterprise.iptv.presentation.multiview.MultiViewContainer
 import com.enterprise.iptv.presentation.multiview.MultiViewLayout
 import com.enterprise.iptv.presentation.multiview.MultiViewManager
@@ -238,6 +241,14 @@ fun ChannelScreen(
                         val sleepTimerSeconds by viewModel.sleepTimerSeconds.collectAsState()
                         val isMultiViewActive by viewModel.isMultiViewActive.collectAsState()
 
+                        // حالة البث للشاشات الذكية (DLNA / Cast)
+                        val discoveredCastDevices by viewModel.discoveredCastDevices.collectAsState()
+                        val isScanningForCast by viewModel.isScanningForCast.collectAsState()
+                        val activeCastDevice by viewModel.activeCastDevice.collectAsState()
+                        val castState by viewModel.castState.collectAsState()
+                        var showCastDialog by remember { mutableStateOf(false) }
+                        var recordingToCast by remember { mutableStateOf<File?>(null) }
+
                         CinematicContent(
                             state = state,
                             currentTab = currentTab,
@@ -269,8 +280,44 @@ fun ChannelScreen(
                             onEnableKidsMode = { viewModel.enableKidsMode() },
                             onDisableKidsMode = { pin -> viewModel.disableKidsMode(pin) },
                             onAutoHeal = { viewModel.autoHealCurrentChannel() },
-                            onGetChannelSchedule = { ch -> viewModel.getChannelSchedule(ch) }
+                            onGetChannelSchedule = { ch -> viewModel.getChannelSchedule(ch) },
+                            isCasting = castState !is CastState.Disconnected,
+                            onOpenCast = {
+                                recordingToCast = null
+                                viewModel.startCastDiscovery()
+                                showCastDialog = true
+                            },
+                            onCastRecording = { file ->
+                                recordingToCast = file
+                                viewModel.startCastDiscovery()
+                                showCastDialog = true
+                            }
                         )
+
+                        // نافذة اختيار والتحكم في الشاشات الذكية (DLNA / Cast Dialog)
+                        if (showCastDialog) {
+                            CastDeviceDialog(
+                                devices = discoveredCastDevices,
+                                isScanning = isScanningForCast,
+                                castState = castState,
+                                activeDevice = activeCastDevice,
+                                targetMediaTitle = recordingToCast?.name ?: state.currentChannel?.name,
+                                onDismiss = {
+                                    showCastDialog = false
+                                    viewModel.stopCastDiscovery()
+                                },
+                                onSelectDevice = { device ->
+                                    if (recordingToCast != null) {
+                                        viewModel.castRecordingToDevice(recordingToCast!!, device)
+                                    } else {
+                                        viewModel.castCurrentChannelToDevice(device)
+                                    }
+                                },
+                                onTogglePlayPause = { viewModel.toggleCastPlayback() },
+                                onDisconnect = { viewModel.disconnectCast() },
+                                onRescan = { viewModel.startCastDiscovery() }
+                            )
+                        }
 
                         // نافذة تأكيد اكتمال وحفظ التسجيل الحي بنجاح
                         if (state.recordState is RecordState.Completed) {
@@ -686,7 +733,10 @@ fun CinematicContent(
     onEnableKidsMode: () -> Unit = {},
     onDisableKidsMode: (String) -> Boolean = { false },
     onAutoHeal: () -> Unit = {},
-    onGetChannelSchedule: (Channel) -> List<EpgProgram> = { emptyList() }
+    onGetChannelSchedule: (Channel) -> List<EpgProgram> = { emptyList() },
+    isCasting: Boolean = false,
+    onOpenCast: () -> Unit = {},
+    onCastRecording: (File) -> Unit = {}
 ) {
     val configuration = LocalConfiguration.current
     val isTabletOrLandscape = configuration.screenWidthDp >= 600
@@ -718,7 +768,9 @@ fun CinematicContent(
                     epgNext = state.epgNext,
                     autoHealStatus = state.autoHealStatus,
                     onAutoHeal = onAutoHeal,
-                    onOpenSchedule = { showScheduleDialog = true }
+                    onOpenSchedule = { showScheduleDialog = true },
+                    isCasting = isCasting,
+                    onOpenCast = onOpenCast
                 )
             }
         }
@@ -754,7 +806,9 @@ fun CinematicContent(
                         epgNext = state.epgNext,
                         autoHealStatus = state.autoHealStatus,
                         onAutoHeal = onAutoHeal,
-                        onOpenSchedule = { showScheduleDialog = true }
+                        onOpenSchedule = { showScheduleDialog = true },
+                        isCasting = isCasting,
+                        onOpenCast = onOpenCast
                     )
                 }
             }
@@ -778,6 +832,7 @@ fun CinematicContent(
                     savedRecordings = savedRecordings,
                     onPlayRecording = onPlayRecording,
                     onDeleteRecording = onDeleteRecording,
+                    onCastRecording = onCastRecording,
                     isKidsMode = state.isKidsMode,
                     onEnableKidsMode = onEnableKidsMode,
                     onDisableKidsMode = onDisableKidsMode
@@ -824,7 +879,9 @@ fun CinematicContent(
                         epgNext = state.epgNext,
                         autoHealStatus = state.autoHealStatus,
                         onAutoHeal = onAutoHeal,
-                        onOpenSchedule = { showScheduleDialog = true }
+                        onOpenSchedule = { showScheduleDialog = true },
+                        isCasting = isCasting,
+                        onOpenCast = onOpenCast
                     )
                 }
             }
@@ -853,6 +910,7 @@ fun CinematicContent(
                     savedRecordings = savedRecordings,
                     onPlayRecording = onPlayRecording,
                     onDeleteRecording = onDeleteRecording,
+                    onCastRecording = onCastRecording,
                     isKidsMode = state.isKidsMode,
                     onEnableKidsMode = onEnableKidsMode,
                     onDisableKidsMode = onDisableKidsMode
@@ -888,6 +946,7 @@ fun TabContent(
     savedRecordings: List<File> = emptyList(),
     onPlayRecording: (File) -> Unit = {},
     onDeleteRecording: (File) -> Unit = {},
+    onCastRecording: (File) -> Unit = {},
     isKidsMode: Boolean = false,
     onEnableKidsMode: () -> Unit = {},
     onDisableKidsMode: (String) -> Boolean = { false }
@@ -935,6 +994,7 @@ fun TabContent(
                 savedRecordings = savedRecordings,
                 onPlayRecording = onPlayRecording,
                 onDeleteRecording = onDeleteRecording,
+                onCastRecording = onCastRecording,
                 isKidsMode = isKidsMode,
                 onEnableKidsMode = onEnableKidsMode,
                 onDisableKidsMode = onDisableKidsMode
@@ -1776,6 +1836,7 @@ fun SettingsView(
     savedRecordings: List<File> = emptyList(),
     onPlayRecording: (File) -> Unit = {},
     onDeleteRecording: (File) -> Unit = {},
+    onCastRecording: (File) -> Unit = {},
     isKidsMode: Boolean = false,
     onEnableKidsMode: () -> Unit = {},
     onDisableKidsMode: (String) -> Boolean = { false }
@@ -2732,6 +2793,15 @@ We strive to provide the highest playback performance. Features may be updated p
                                             Icon(Icons.Default.PlayArrow, contentDescription = "تشغيل", tint = AccentTeal)
                                         }
                                         IconButton(
+                                            onClick = {
+                                                showRecordingsDialog = false
+                                                onCastRecording(file)
+                                            },
+                                            modifier = Modifier.size(32.dp)
+                                        ) {
+                                            Icon(Icons.Default.Cast, contentDescription = "بث للشاشة", tint = Color(0xFF4FC3F7))
+                                        }
+                                        IconButton(
                                             onClick = { onDeleteRecording(file) },
                                             modifier = Modifier.size(32.dp)
                                         ) {
@@ -2963,7 +3033,9 @@ fun VideoPlayerContainer(
     epgNext: EpgProgram? = null,
     autoHealStatus: String? = null,
     onAutoHeal: () -> Unit = {},
-    onOpenSchedule: () -> Unit = {}
+    onOpenSchedule: () -> Unit = {},
+    isCasting: Boolean = false,
+    onOpenCast: () -> Unit = {}
 ) {
     val volume by playerEngine.volume.collectAsState()
     val isMuted by playerEngine.isMuted.collectAsState()
@@ -3301,6 +3373,21 @@ fun VideoPlayerContainer(
                                 imageVector = Icons.Default.PictureInPictureAlt,
                                 contentDescription = "النافذة العائمة PiP",
                                 tint = AccentTeal,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
+                        // 1.1 زر البث للشاشات والتلفزيونات الذكية (DLNA / Cast)
+                        IconButton(
+                            onClick = onOpenCast,
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(Color.Black.copy(alpha = 0.65f), CircleShape)
+                        ) {
+                            Icon(
+                                imageVector = if (isCasting) Icons.Default.CastConnected else Icons.Default.Cast,
+                                contentDescription = "البث للشاشات الذكية (Cast)",
+                                tint = if (isCasting) NeonCyan else AccentTeal,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
