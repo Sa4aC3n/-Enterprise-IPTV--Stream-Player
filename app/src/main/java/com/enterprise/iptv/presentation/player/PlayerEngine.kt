@@ -18,7 +18,10 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
 import com.enterprise.iptv.domain.audio.VocalDspAudioProcessor
 import com.enterprise.iptv.domain.audio.VocalDspMode
+import com.enterprise.iptv.domain.chapter.SmartChapter
+import com.enterprise.iptv.domain.chapter.SmartChapterManager
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
@@ -48,13 +51,33 @@ data class StreamServer(
 @Singleton
 class PlayerEngine @Inject constructor(
     @ApplicationContext private val context: Context,
-    val vocalDspProcessor: VocalDspAudioProcessor
+    val vocalDspProcessor: VocalDspAudioProcessor,
+    val smartChapterManager: SmartChapterManager
 ) {
     private val _playbackStatus = MutableStateFlow<PlaybackStatus>(PlaybackStatus.Idle)
     val playbackStatus = _playbackStatus.asStateFlow()
 
     // معالج الصوت الترددي اللحظي (عازل الصوت وموضح الكلام)
     val vocalDspMode = vocalDspProcessor.currentMode
+
+    // الفصول الذكية للتسجيلات (Smart Chapters) ومؤشرات التوقيت
+    private val _smartChapters = MutableStateFlow<List<SmartChapter>>(emptyList())
+    val smartChapters = _smartChapters.asStateFlow()
+
+    private val _currentChapter = MutableStateFlow<SmartChapter?>(null)
+    val currentChapter = _currentChapter.asStateFlow()
+
+    private val _currentPositionMs = MutableStateFlow(0L)
+    val currentPositionMs = _currentPositionMs.asStateFlow()
+
+    private val _durationMs = MutableStateFlow(0L)
+    val durationMs = _durationMs.asStateFlow()
+
+    private val _isLiveStream = MutableStateFlow(true)
+    val isLiveStream = _isLiveStream.asStateFlow()
+
+    private val playerScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private var progressTickerJob: Job? = null
 
     // Stream Servers (Primary + Backups) & Auto-Failover
     private val _servers = MutableStateFlow<List<StreamServer>>(emptyList())
@@ -90,7 +113,11 @@ class PlayerEngine @Inject constructor(
         override fun onPlaybackStateChanged(state: Int) {
             _playbackStatus.value = when (state) {
                 Player.STATE_BUFFERING -> PlaybackStatus.Buffering
-                Player.STATE_READY -> PlaybackStatus.Playing
+                Player.STATE_READY -> {
+                    checkContentDurationAndChapters()
+                    startProgressTicker()
+                    PlaybackStatus.Playing
+                }
                 Player.STATE_ENDED -> PlaybackStatus.Ended
                 else -> PlaybackStatus.Idle
             }
@@ -184,6 +211,11 @@ class PlayerEngine @Inject constructor(
     }
 
     fun playChannel(streamUrl: String, backupUrls: List<String> = emptyList()) {
+        _isLiveStream.value = true
+        _smartChapters.value = emptyList()
+        _currentChapter.value = null
+        _durationMs.value = 0L
+        _currentPositionMs.value = 0L
         val allUrls = (listOf(streamUrl) + backupUrls).filter { it.isNotBlank() }.distinct()
         val serverList = allUrls.mapIndexed { index, url ->
             val label = if (index == 0) "سيرفر 1 (رئيسي)" else "سيرفر ${index + 1} (بديل)"
@@ -291,7 +323,76 @@ class PlayerEngine @Inject constructor(
         vocalDspProcessor.setMode(mode)
     }
 
+    private fun checkContentDurationAndChapters() {
+        val dur = exoPlayer.duration
+        if (dur > 0L && dur != C.TIME_UNSET) {
+            _durationMs.value = dur
+            _isLiveStream.value = false
+            if (_smartChapters.value.isEmpty()) {
+                _smartChapters.value = smartChapterManager.generateChapters(dur)
+            }
+            _currentChapter.value = smartChapterManager.findCurrentChapter(exoPlayer.currentPosition, _smartChapters.value)
+        } else {
+            _durationMs.value = 0L
+            _isLiveStream.value = true
+            _smartChapters.value = emptyList()
+            _currentChapter.value = null
+        }
+    }
+
+    private fun startProgressTicker() {
+        progressTickerJob?.cancel()
+        progressTickerJob = playerScope.launch {
+            while (isActive) {
+                if (exoPlayer.isPlaying || _playbackStatus.value is PlaybackStatus.Playing) {
+                    val pos = exoPlayer.currentPosition.coerceAtLeast(0L)
+                    _currentPositionMs.value = pos
+                    val chapters = _smartChapters.value
+                    if (chapters.isNotEmpty()) {
+                        _currentChapter.value = smartChapterManager.findCurrentChapter(pos, chapters)
+                    }
+                }
+                delay(500)
+            }
+        }
+    }
+
+    fun seekTo(positionMs: Long) {
+        val target = positionMs.coerceIn(0L, _durationMs.value.coerceAtLeast(1L))
+        exoPlayer.seekTo(target)
+        _currentPositionMs.value = target
+        val chapters = _smartChapters.value
+        if (chapters.isNotEmpty()) {
+            _currentChapter.value = smartChapterManager.findCurrentChapter(target, chapters)
+        }
+    }
+
+    fun seekToChapter(chapter: SmartChapter) {
+        seekTo(chapter.startMs)
+    }
+
+    fun seekToNextChapter(): Boolean {
+        val next = smartChapterManager.getNextChapter(exoPlayer.currentPosition, _smartChapters.value)
+        return if (next != null) {
+            seekToChapter(next)
+            true
+        } else false
+    }
+
+    fun seekToPreviousChapter(): Boolean {
+        val prev = smartChapterManager.getPreviousChapter(exoPlayer.currentPosition, _smartChapters.value)
+        return if (prev != null) {
+            seekToChapter(prev)
+            true
+        } else false
+    }
+
     fun playFile(file: java.io.File) {
+        _isLiveStream.value = false
+        _smartChapters.value = emptyList()
+        _currentChapter.value = null
+        _durationMs.value = 0L
+        _currentPositionMs.value = 0L
         _servers.value = listOf(StreamServer("تسجيل محلي", file.absolutePath))
         _currentServerIndex.value = 0
         playUrlInternal(android.net.Uri.fromFile(file).toString())
@@ -302,6 +403,8 @@ class PlayerEngine @Inject constructor(
     }
 
     fun release() {
+        progressTickerJob?.cancel()
+        playerScope.cancel()
         exoPlayer.removeListener(playerListener)
         exoPlayer.release()
     }

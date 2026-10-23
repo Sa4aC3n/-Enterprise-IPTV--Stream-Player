@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.enterprise.iptv.domain.cast.CastDevice
 import com.enterprise.iptv.domain.cast.CastState
 import com.enterprise.iptv.domain.cast.DlnaCastManager
+import com.enterprise.iptv.domain.chapter.SmartChapter
 import com.enterprise.iptv.domain.epg.EpgManager
 import com.enterprise.iptv.domain.healing.ServerHealth
 import com.enterprise.iptv.domain.healing.StreamAutoHealer
@@ -394,6 +395,18 @@ class ChannelsViewModel @Inject constructor(
 
     fun playRecording(file: File) {
         playerEngine.playFile(file)
+    }
+
+    fun seekToChapter(chapter: SmartChapter) {
+        playerEngine.seekToChapter(chapter)
+    }
+
+    fun seekToNextChapter(): Boolean {
+        return playerEngine.seekToNextChapter()
+    }
+
+    fun seekToPreviousChapter(): Boolean {
+        return playerEngine.seekToPreviousChapter()
     }
 
     fun setSleepTimer(minutes: Int?) {

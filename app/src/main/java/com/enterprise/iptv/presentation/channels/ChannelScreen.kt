@@ -64,6 +64,7 @@ import com.enterprise.iptv.R
 import com.enterprise.iptv.domain.audio.VocalDspMode
 import com.enterprise.iptv.domain.cast.CastDevice
 import com.enterprise.iptv.domain.cast.CastState
+import com.enterprise.iptv.domain.chapter.SmartChapter
 import com.enterprise.iptv.domain.model.Channel
 import com.enterprise.iptv.domain.model.EpgProgram
 import com.enterprise.iptv.domain.recorder.RecordState
@@ -2777,11 +2778,26 @@ We strive to provide the highest playback performance. Features may be updated p
                                             overflow = TextOverflow.Ellipsis
                                         )
                                         Spacer(Modifier.height(2.dp))
-                                        Text(
-                                            text = sizeMb,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = AccentTeal
-                                        )
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = sizeMb,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = AccentTeal
+                                            )
+                                            Spacer(Modifier.width(8.dp))
+                                            Surface(
+                                                color = AccentTeal.copy(alpha = 0.15f),
+                                                shape = RoundedCornerShape(4.dp)
+                                            ) {
+                                                Text(
+                                                    text = "📑 فصول ذكية",
+                                                    color = AccentTeal,
+                                                    fontSize = 9.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                                )
+                                            }
+                                        }
                                     }
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         IconButton(
@@ -2837,6 +2853,140 @@ We strive to provide the highest playback performance. Features may be updated p
             }
         )
     }
+}
+
+/**
+ * نافذة الفصول الذكية للتسجيل (Smart Chapters Dialog)
+ * تتيح عرض فصول التسجيل والتنقل الفوري بنقرة واحدة إلى أي فصل
+ */
+@Composable
+fun SmartChaptersDialog(
+    chapters: List<SmartChapter>,
+    currentChapter: SmartChapter?,
+    onSeekToChapter: (SmartChapter) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Bookmarks,
+                    contentDescription = null,
+                    tint = AccentTeal,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(Modifier.width(10.dp))
+                Column {
+                    Text(
+                        text = "📑 فصول التسجيل الذكية",
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = "إجمالي ${chapters.size} فصول • اضغط للقفز المباشر",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextSecondary
+                    )
+                }
+            }
+        },
+        text = {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 380.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(chapters) { chapter ->
+                    val isSelected = chapter == currentChapter
+                    Surface(
+                        onClick = {
+                            onSeekToChapter(chapter)
+                            onDismiss()
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (isSelected) AccentTeal.copy(alpha = 0.18f) else DarkCard,
+                        border = BorderStroke(1.dp, if (isSelected) AccentTeal else DarkBorder),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .background(if (isSelected) AccentTeal else DarkBackground),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (isSelected) {
+                                        Icon(
+                                            imageVector = Icons.Default.PlayArrow,
+                                            contentDescription = null,
+                                            tint = Color.Black,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    } else {
+                                        Text(
+                                            text = "${chapter.index}",
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White,
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                }
+                                Spacer(Modifier.width(12.dp))
+                                Column {
+                                    Text(
+                                        text = chapter.title,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isSelected) AccentTeal else Color.White
+                                    )
+                                    Text(
+                                        text = chapter.formattedTimeRange,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = TextSecondary
+                                    )
+                                }
+                            }
+                            Surface(
+                                color = DarkBackground,
+                                shape = RoundedCornerShape(6.dp),
+                                border = BorderStroke(0.5.dp, DarkBorder)
+                            ) {
+                                Text(
+                                    text = chapter.formattedDuration,
+                                    color = if (isSelected) AccentTeal else TextSecondary,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("إغلاق", color = AccentTeal)
+            }
+        },
+        containerColor = DarkSurface,
+        titleContentColor = Color.White,
+        textContentColor = Color.White
+    )
 }
 
 /**
@@ -3047,9 +3197,15 @@ fun VideoPlayerContainer(
     val currentServerIndex by playerEngine.currentServerIndex.collectAsState()
     val isAudioOnly by playerEngine.isAudioOnly.collectAsState()
     val dspMode by playerEngine.vocalDspMode.collectAsState()
+    val smartChapters by playerEngine.smartChapters.collectAsState()
+    val currentChapter by playerEngine.currentChapter.collectAsState()
+    val currentPositionMs by playerEngine.currentPositionMs.collectAsState()
+    val durationMs by playerEngine.durationMs.collectAsState()
+    val isLiveStream by playerEngine.isLiveStream.collectAsState()
 
     var showControls by remember { mutableStateOf(true) }
     var showSettingsDialog by remember { mutableStateOf(false) }
+    var showChaptersDialog by remember { mutableStateOf(false) }
     var showOsd by remember { mutableStateOf(false) }
     var dspBadgeMessage by remember { mutableStateOf<String?>(null) }
 
@@ -3226,16 +3382,22 @@ fun VideoPlayerContainer(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        // زر الانتقال للقناة السابقة (Fast Zapping Back)
+                        // زر الانتقال للقناة السابقة أو الفصل السابق
                         IconButton(
-                            onClick = onPlayPrevious,
+                            onClick = {
+                                if (!isLiveStream && smartChapters.isNotEmpty()) {
+                                    playerEngine.seekToPreviousChapter()
+                                } else {
+                                    onPlayPrevious()
+                                }
+                            },
                             modifier = Modifier
                                 .size(44.dp)
                                 .background(Color.Black.copy(alpha = 0.65f), CircleShape)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.SkipPrevious,
-                                contentDescription = "القناة السابقة",
+                                contentDescription = if (!isLiveStream && smartChapters.isNotEmpty()) "الفصل السابق" else "القناة السابقة",
                                 tint = Color.White,
                                 modifier = Modifier.size(24.dp)
                             )
@@ -3257,16 +3419,22 @@ fun VideoPlayerContainer(
                             )
                         }
 
-                        // زر الانتقال للقناة التالية (Fast Zapping Next)
+                        // زر الانتقال للقناة التالية أو الفصل التالي
                         IconButton(
-                            onClick = onPlayNext,
+                            onClick = {
+                                if (!isLiveStream && smartChapters.isNotEmpty()) {
+                                    playerEngine.seekToNextChapter()
+                                } else {
+                                    onPlayNext()
+                                }
+                            },
                             modifier = Modifier
                                 .size(44.dp)
                                 .background(Color.Black.copy(alpha = 0.65f), CircleShape)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.SkipNext,
-                                contentDescription = "القناة التالية",
+                                contentDescription = if (!isLiveStream && smartChapters.isNotEmpty()) "الفصل التالي" else "القناة التالية",
                                 tint = Color.White,
                                 modifier = Modifier.size(24.dp)
                             )
@@ -3429,6 +3597,23 @@ fun VideoPlayerContainer(
                             )
                         }
 
+                        // 1.3 زر فصول التسجيل الذكية (Smart Chapters)
+                        if (!isLiveStream && smartChapters.isNotEmpty()) {
+                            IconButton(
+                                onClick = { showChaptersDialog = true },
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .background(Color.Black.copy(alpha = 0.65f), CircleShape)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Bookmarks,
+                                    contentDescription = "فصول التسجيل الذكية",
+                                    tint = AccentTeal,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+
                         // 1. زر الترس: يفتح إعدادات جودة البث والسيرفرات البديلة
                         IconButton(
                             onClick = { showSettingsDialog = true },
@@ -3512,6 +3697,102 @@ fun VideoPlayerContainer(
                             Icon(Icons.Default.GraphicEq, contentDescription = null, tint = AccentTeal, modifier = Modifier.size(14.dp))
                             Spacer(Modifier.width(6.dp))
                             Text(text = dspBadgeMessage ?: "", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+
+                // شريط الفصول الذكية والوقت التفاعلي لتسجيلات الفيديو
+                if (!isLiveStream && durationMs > 0) {
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .padding(bottom = 54.dp, start = 8.dp, end = 8.dp)
+                            .background(Color.Black.copy(alpha = 0.85f), RoundedCornerShape(12.dp))
+                            .border(1.dp, DarkBorder, RoundedCornerShape(12.dp))
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Bookmarks,
+                                    contentDescription = null,
+                                    tint = AccentTeal,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    text = currentChapter?.title ?: "تسجيل محلي",
+                                    color = AccentTeal,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = "${SmartChapter.formatTime(currentPositionMs)} / ${SmartChapter.formatTime(durationMs)}",
+                                color = Color.White,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+
+                        Spacer(Modifier.height(4.dp))
+
+                        // شريط التقديم والتأخير التفاعلي مع دعم الفصول
+                        Slider(
+                            value = currentPositionMs.toFloat().coerceIn(0f, durationMs.toFloat()),
+                            onValueChange = { playerEngine.seekTo(it.toLong()) },
+                            valueRange = 0f..durationMs.toFloat(),
+                            modifier = Modifier.fillMaxWidth().height(20.dp),
+                            colors = SliderDefaults.colors(
+                                thumbColor = AccentTeal,
+                                activeTrackColor = AccentTeal,
+                                inactiveTrackColor = Color.White.copy(alpha = 0.25f)
+                            )
+                        )
+
+                        // أزرار القفز السريع بين الفصول (السابق / التالي / قائمة الفصول)
+                        if (smartChapters.isNotEmpty()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                TextButton(
+                                    onClick = { playerEngine.seekToPreviousChapter() },
+                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Icon(Icons.Default.FastRewind, contentDescription = null, tint = AccentTeal, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("الفصل السابق", color = AccentTeal, fontSize = 10.sp)
+                                }
+
+                                TextButton(
+                                    onClick = { showChaptersDialog = true },
+                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text("📑 جميع الفصول (${smartChapters.size})", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                }
+
+                                TextButton(
+                                    onClick = { playerEngine.seekToNextChapter() },
+                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text("الفصل التالي", color = AccentTeal, fontSize = 10.sp)
+                                    Spacer(Modifier.width(4.dp))
+                                    Icon(Icons.Default.FastForward, contentDescription = null, tint = AccentTeal, modifier = Modifier.size(16.dp))
+                                }
+                            }
                         }
                     }
                 }
@@ -4031,6 +4312,16 @@ fun VideoPlayerContainer(
             },
             containerColor = DarkCard,
             textContentColor = Color.White
+        )
+    }
+
+    // نافذة الفصول الذكية للتسجيلات (Smart Chapters Dialog)
+    if (showChaptersDialog && smartChapters.isNotEmpty()) {
+        SmartChaptersDialog(
+            chapters = smartChapters,
+            currentChapter = currentChapter,
+            onSeekToChapter = { playerEngine.seekToChapter(it) },
+            onDismiss = { showChaptersDialog = false }
         )
     }
 }
