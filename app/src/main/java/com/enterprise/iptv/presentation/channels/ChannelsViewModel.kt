@@ -4,6 +4,8 @@ import android.content.ContentResolver
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.enterprise.iptv.domain.backup.BackupOperationResult
+import com.enterprise.iptv.domain.backup.BackupRestoreManager
 import com.enterprise.iptv.domain.cast.CastDevice
 import com.enterprise.iptv.domain.cast.CastState
 import com.enterprise.iptv.domain.cast.DlnaCastManager
@@ -68,12 +70,42 @@ class ChannelsViewModel @Inject constructor(
     val kidsSpaceManager: KidsSpaceManager,
     val autoHealer: StreamAutoHealer,
     val castManager: DlnaCastManager,
-    val voiceManager: VoiceRecognitionManager
+    val voiceManager: VoiceRecognitionManager,
+    val backupRestoreManager: BackupRestoreManager
 ) : ViewModel() {
 
     val isMultiViewActive = multiViewManager.isActive
     val multiViewLayout = multiViewManager.layout
     val isKidsModeActive = kidsSpaceManager.isKidsModeActive
+
+    // إدارة النسخ الاحتياطي والاستعادة (Backup & Restore via JSON & SAF)
+    val backupOperationResult = backupRestoreManager.lastOperationResult
+    private val _showBackupDialog = MutableStateFlow(false)
+    val showBackupDialog = _showBackupDialog.asStateFlow()
+
+    fun setShowBackupDialog(show: Boolean) {
+        _showBackupDialog.value = show
+    }
+
+    fun exportBackup(destinationUri: Uri) {
+        viewModelScope.launch {
+            backupRestoreManager.exportBackup(destinationUri)
+        }
+    }
+
+    fun restoreBackup(sourceUri: Uri) {
+        viewModelScope.launch {
+            backupRestoreManager.restoreBackup(sourceUri)
+        }
+    }
+
+    fun clearBackupResult() {
+        backupRestoreManager.clearResult()
+    }
+
+    suspend fun getFavoritesCount(): Int {
+        return backupRestoreManager.getCurrentFavoritesCount()
+    }
 
     // حالة الأوامر والتعرف الصوتي (Voice Commands)
     val voiceState = voiceManager.voiceState
@@ -561,6 +593,9 @@ class ChannelsViewModel @Inject constructor(
             }
             VoiceCommand.ToggleFullscreen -> {}
             VoiceCommand.OpenQualitySettings -> {}
+            VoiceCommand.OpenBackupRestore -> {
+                setShowBackupDialog(true)
+            }
             is VoiceCommand.Unrecognized -> {
                 if (command.rawText.isNotBlank()) {
                     onSearchQueryChange(command.rawText)

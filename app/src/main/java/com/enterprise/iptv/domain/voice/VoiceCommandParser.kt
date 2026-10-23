@@ -54,6 +54,11 @@ class VoiceCommandParser @Inject constructor() {
             return VoiceCommand.OpenQualitySettings
         }
 
+        // 7.2 أوامر النسخ الاحتياطي واستعادة المفضلة
+        if (text.contains("نسخ احتياطي") || text.contains("نسخه احتياطيه") || text.contains("استعادة") || text.contains("استرجاع") || text.contains("backup") || text.contains("restore")) {
+            return VoiceCommand.OpenBackupRestore
+        }
+
         // 8. أوامر البحث الصريحة
         val searchPrefixes = listOf("ابحث عن", "ابحث عن قناة", "بحث عن", "بحث", "دور على", "search for", "find")
         for (prefix in searchPrefixes) {

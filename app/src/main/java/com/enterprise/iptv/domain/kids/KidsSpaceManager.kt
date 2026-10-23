@@ -56,4 +56,12 @@ class KidsSpaceManager @Inject constructor(
         }
         return false
     }
+
+    fun getPin(): String = getStoredPin()
+
+    fun restorePin(pin: String) {
+        if (pin.trim().length == 4) {
+            prefs.edit().putString("kids_pin", pin.trim()).apply()
+        }
+    }
 }

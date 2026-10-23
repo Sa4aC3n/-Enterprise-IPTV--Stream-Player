@@ -45,4 +45,13 @@ interface ChannelDao {
 
     @Query("SELECT COUNT(*) FROM channels")
     suspend fun getChannelsCount(): Int
+
+    @Query("SELECT * FROM channels WHERE isFavorite = 1 ORDER BY name ASC")
+    suspend fun getFavoriteChannels(): List<ChannelEntity>
+
+    @Query("SELECT COUNT(*) FROM channels WHERE isFavorite = 1")
+    suspend fun getFavoritesCount(): Int
+
+    @Query("UPDATE channels SET isFavorite = :isFav WHERE streamUrl = :streamUrl OR name = :name")
+    suspend fun updateFavoriteByStreamOrName(streamUrl: String, name: String, isFav: Boolean): Int
 }

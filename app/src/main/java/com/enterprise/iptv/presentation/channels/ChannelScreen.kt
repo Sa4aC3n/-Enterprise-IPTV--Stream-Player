@@ -62,6 +62,7 @@ import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.enterprise.iptv.R
 import com.enterprise.iptv.domain.audio.VocalDspMode
+import com.enterprise.iptv.domain.backup.BackupOperationResult
 import com.enterprise.iptv.domain.caption.SubtitleTrack
 import com.enterprise.iptv.domain.cast.CastDevice
 import com.enterprise.iptv.domain.cast.CastState
@@ -72,6 +73,7 @@ import com.enterprise.iptv.domain.model.EpgProgram
 import com.enterprise.iptv.domain.recorder.RecordState
 import com.enterprise.iptv.domain.voice.VoiceCommand
 import com.enterprise.iptv.domain.voice.VoiceRecognitionState
+import com.enterprise.iptv.presentation.backup.BackupRestoreDialog
 import com.enterprise.iptv.presentation.cast.CastDeviceDialog
 import com.enterprise.iptv.presentation.multiview.MultiViewContainer
 import com.enterprise.iptv.presentation.multiview.MultiViewLayout
@@ -262,6 +264,8 @@ fun ChannelScreen(
                         val activeCastDevice by viewModel.activeCastDevice.collectAsState()
                         val castState by viewModel.castState.collectAsState()
                         val networkStats by viewModel.networkStats.collectAsState()
+                        val showBackupDialog by viewModel.showBackupDialog.collectAsState()
+                        val backupResult by viewModel.backupOperationResult.collectAsState()
                         var showCastDialog by remember { mutableStateOf(false) }
                         var recordingToCast by remember { mutableStateOf<File?>(null) }
 
@@ -313,8 +317,21 @@ fun ChannelScreen(
                                 showVoiceDialog = true
                             },
                             networkStats = networkStats,
-                            onResetDataMeter = { viewModel.resetSessionDataCounter() }
+                            onResetDataMeter = { viewModel.resetSessionDataCounter() },
+                            onOpenBackupRestore = { viewModel.setShowBackupDialog(true) }
                         )
+
+                        // نافذة النسخ الاحتياطي واستعادة المفضلة (Backup & Restore Dialog)
+                        if (showBackupDialog) {
+                            BackupRestoreDialog(
+                                isArabic = isArabic,
+                                backupResult = backupResult,
+                                onExportBackup = { viewModel.exportBackup(it) },
+                                onRestoreBackup = { viewModel.restoreBackup(it) },
+                                onClearResult = { viewModel.clearBackupResult() },
+                                onDismiss = { viewModel.setShowBackupDialog(false) }
+                            )
+                        }
 
                         // نافذة اختيار والتحكم في الشاشات الذكية (DLNA / Cast Dialog)
                         if (showCastDialog) {
@@ -802,7 +819,8 @@ fun CinematicContent(
     onCastRecording: (File) -> Unit = {},
     onOpenVoice: () -> Unit = {},
     networkStats: NetworkDataStats? = null,
-    onResetDataMeter: () -> Unit = {}
+    onResetDataMeter: () -> Unit = {},
+    onOpenBackupRestore: () -> Unit = {}
 ) {
     val configuration = LocalConfiguration.current
     val isTabletOrLandscape = configuration.screenWidthDp >= 600
@@ -906,7 +924,8 @@ fun CinematicContent(
                     onDisableKidsMode = onDisableKidsMode,
                     onVoiceClick = onOpenVoice,
                     networkStats = networkStats,
-                    onResetDataMeter = onResetDataMeter
+                    onResetDataMeter = onResetDataMeter,
+                    onOpenBackupRestore = onOpenBackupRestore
                 )
             }
         }
@@ -988,7 +1007,8 @@ fun CinematicContent(
                     onDisableKidsMode = onDisableKidsMode,
                     onVoiceClick = onOpenVoice,
                     networkStats = networkStats,
-                    onResetDataMeter = onResetDataMeter
+                    onResetDataMeter = onResetDataMeter,
+                    onOpenBackupRestore = onOpenBackupRestore
                 )
             }
         }
@@ -1027,7 +1047,8 @@ fun TabContent(
     onDisableKidsMode: (String) -> Boolean = { false },
     onVoiceClick: () -> Unit = {},
     networkStats: NetworkDataStats? = null,
-    onResetDataMeter: () -> Unit = {}
+    onResetDataMeter: () -> Unit = {},
+    onOpenBackupRestore: () -> Unit = {}
 ) {
     AnimatedContent(
         targetState = currentTab,
@@ -1078,7 +1099,8 @@ fun TabContent(
                 onEnableKidsMode = onEnableKidsMode,
                 onDisableKidsMode = onDisableKidsMode,
                 networkStats = networkStats,
-                onResetDataMeter = onResetDataMeter
+                onResetDataMeter = onResetDataMeter,
+                onOpenBackupRestore = onOpenBackupRestore
             )
         }
     }
@@ -1923,7 +1945,8 @@ fun SettingsView(
     onEnableKidsMode: () -> Unit = {},
     onDisableKidsMode: (String) -> Boolean = { false },
     networkStats: NetworkDataStats? = null,
-    onResetDataMeter: () -> Unit = {}
+    onResetDataMeter: () -> Unit = {},
+    onOpenBackupRestore: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var showUpdateDialog by remember { mutableStateOf(false) }
@@ -2382,6 +2405,70 @@ fun SettingsView(
                             uncheckedThumbColor = Color.LightGray,
                             uncheckedTrackColor = DarkCard
                         )
+                    )
+                }
+            }
+        }
+
+        // 3.2 بطاقة النسخ الاحتياطي واستعادة المفضلة (Backup & Restore)
+        item {
+            Surface(
+                color = GlassSurface,
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, DarkBorder),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onOpenBackupRestore() }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(46.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(NeonCyan.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CloudSync,
+                                contentDescription = null,
+                                tint = NeonCyan,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+
+                        Spacer(Modifier.width(14.dp))
+
+                        Column {
+                            Text(
+                                text = if (isArabic) "النسخ الاحتياطي والاستعادة" else "Backup & Restore",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = if (isArabic) "حفظ واسترجاع قنواتك المفضلة وإعدادات التطبيق بملف JSON" else "Export & import favorites and settings via JSON",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary
+                            )
+                        }
+                    }
+
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = AccentTeal,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }

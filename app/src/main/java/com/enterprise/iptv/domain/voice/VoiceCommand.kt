@@ -55,6 +55,11 @@ sealed interface VoiceCommand {
     data object OpenQualitySettings : VoiceCommand
 
     /**
+     * فتح نافذة النسخ الاحتياطي واستعادة المفضلة (Backup & Restore)
+     */
+    data object OpenBackupRestore : VoiceCommand
+
+    /**
      * أمر غير معروف أو عام
      */
     data class Unrecognized(val rawText: String) : VoiceCommand
