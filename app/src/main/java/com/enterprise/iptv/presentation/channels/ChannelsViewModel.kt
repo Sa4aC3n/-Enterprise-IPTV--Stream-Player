@@ -17,6 +17,8 @@ import com.enterprise.iptv.domain.model.EpgProgram
 import com.enterprise.iptv.domain.recorder.RecordState
 import com.enterprise.iptv.domain.recorder.StreamRecorder
 import com.enterprise.iptv.domain.repository.ChannelRepository
+import com.enterprise.iptv.domain.voice.VoiceCommand
+import com.enterprise.iptv.domain.voice.VoiceRecognitionManager
 import com.enterprise.iptv.presentation.multiview.MultiViewLayout
 import com.enterprise.iptv.presentation.multiview.MultiViewManager
 import com.enterprise.iptv.presentation.player.PlaybackStatus
@@ -65,12 +67,16 @@ class ChannelsViewModel @Inject constructor(
     val epgManager: EpgManager,
     val kidsSpaceManager: KidsSpaceManager,
     val autoHealer: StreamAutoHealer,
-    val castManager: DlnaCastManager
+    val castManager: DlnaCastManager,
+    val voiceManager: VoiceRecognitionManager
 ) : ViewModel() {
 
     val isMultiViewActive = multiViewManager.isActive
     val multiViewLayout = multiViewManager.layout
     val isKidsModeActive = kidsSpaceManager.isKidsModeActive
+
+    // حالة الأوامر والتعرف الصوتي (Voice Commands)
+    val voiceState = voiceManager.voiceState
 
     // حالة وأجهزة البث للشاشات الذكية (DLNA / Cast)
     val discoveredCastDevices = castManager.discoveredDevices
@@ -482,11 +488,74 @@ class ChannelsViewModel @Inject constructor(
         playerEngine.play()
     }
 
+    // إدارة الأوامر والتعرف الصوتي (Voice Commands)
+    fun startVoiceListening() {
+        voiceManager.startListening()
+    }
+
+    fun stopVoiceListening() {
+        voiceManager.stopListening()
+    }
+
+    fun resetVoiceState() {
+        voiceManager.resetState()
+    }
+
+    fun executeVoiceCommand(command: VoiceCommand) {
+        when (command) {
+            is VoiceCommand.PlayChannel -> {
+                val query = command.channelQuery.trim().lowercase()
+                val match = _allChannels.firstOrNull {
+                    it.name.lowercase().contains(query) || query.contains(it.name.lowercase())
+                } ?: _allChannels.firstOrNull {
+                    it.groupTitle.lowercase().contains(query)
+                }
+                if (match != null) {
+                    selectChannel(match)
+                } else {
+                    onSearchQueryChange(command.channelQuery)
+                }
+            }
+            is VoiceCommand.Search -> {
+                onSearchQueryChange(command.query)
+            }
+            VoiceCommand.OpenKidsMode -> {
+                kidsSpaceManager.enableKidsMode()
+            }
+            VoiceCommand.OpenSleepTimer -> {
+                setSleepTimer(30)
+            }
+            VoiceCommand.ToggleRecording -> {
+                if (recordState.value is RecordState.Recording) {
+                    stopRecording()
+                } else {
+                    startRecording()
+                }
+            }
+            VoiceCommand.OpenCast -> {
+                startCastDiscovery()
+            }
+            VoiceCommand.ToggleVocalDsp -> {
+                playerEngine.cycleVocalDspMode()
+            }
+            VoiceCommand.ToggleCaptions -> {
+                playerEngine.toggleCaptions()
+            }
+            VoiceCommand.ToggleFullscreen -> {}
+            is VoiceCommand.Unrecognized -> {
+                if (command.rawText.isNotBlank()) {
+                    onSearchQueryChange(command.rawText)
+                }
+            }
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         playerEngine.release()
         multiViewManager.release()
         castManager.stop()
+        voiceManager.stopListening()
         recordingJob?.cancel()
         sleepTimerJob?.cancel()
     }

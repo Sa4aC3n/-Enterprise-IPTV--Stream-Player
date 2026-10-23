@@ -69,6 +69,8 @@ import com.enterprise.iptv.domain.chapter.SmartChapter
 import com.enterprise.iptv.domain.model.Channel
 import com.enterprise.iptv.domain.model.EpgProgram
 import com.enterprise.iptv.domain.recorder.RecordState
+import com.enterprise.iptv.domain.voice.VoiceCommand
+import com.enterprise.iptv.domain.voice.VoiceRecognitionState
 import com.enterprise.iptv.presentation.cast.CastDeviceDialog
 import com.enterprise.iptv.presentation.multiview.MultiViewContainer
 import com.enterprise.iptv.presentation.multiview.MultiViewLayout
@@ -163,6 +165,8 @@ fun ChannelScreen(
 
     var currentTab by rememberSaveable { mutableStateOf(AppTab.HOME) }
     var showAddDialog by remember { mutableStateOf(false) }
+    val voiceState by viewModel.voiceState.collectAsState()
+    var showVoiceDialog by remember { mutableStateOf(false) }
 
     // التحكم في تدوير الشاشة تلقائياً للوضع الأفقي السينمائي عند تكبير الشاشة وإخفاء أشرطة النظام
     DisposableEffect(isFullscreen) {
@@ -202,6 +206,10 @@ fun ChannelScreen(
                     ModernTopBar(
                         isArabic = isArabic,
                         isKidsMode = (uiState as? ChannelsUiState.Success)?.isKidsMode ?: false,
+                        onVoiceClick = {
+                            viewModel.startVoiceListening()
+                            showVoiceDialog = true
+                        },
                         onToggleLanguage = { toggleAppLanguage() },
                         onAddPlaylistClick = { showAddDialog = true }
                     )
@@ -294,6 +302,10 @@ fun ChannelScreen(
                                 recordingToCast = file
                                 viewModel.startCastDiscovery()
                                 showCastDialog = true
+                            },
+                            onOpenVoice = {
+                                viewModel.startVoiceListening()
+                                showVoiceDialog = true
                             }
                         )
 
@@ -402,6 +414,28 @@ fun ChannelScreen(
                 }
 
                 val importState by viewModel.importState.collectAsState()
+
+                // نافذة الأوامر والبحث الصوتي الذكي (Voice Commands Dialog)
+                if (showVoiceDialog) {
+                    VoiceCommandDialog(
+                        state = voiceState,
+                        onDismiss = {
+                            showVoiceDialog = false
+                            viewModel.stopVoiceListening()
+                            viewModel.resetVoiceState()
+                        },
+                        onRetry = {
+                            viewModel.resetVoiceState()
+                            viewModel.startVoiceListening()
+                        },
+                        onExecuteCommand = { cmd ->
+                            viewModel.executeVoiceCommand(cmd)
+                            if (cmd is VoiceCommand.Search || cmd is VoiceCommand.Unrecognized) {
+                                currentTab = AppTab.SEARCH
+                            }
+                        }
+                    )
+                }
 
                 if (showAddDialog) {
                     AddPlaylistDialog(
@@ -521,6 +555,7 @@ fun ChannelScreen(
 fun ModernTopBar(
     isArabic: Boolean,
     isKidsMode: Boolean = false,
+    onVoiceClick: () -> Unit = {},
     onToggleLanguage: () -> Unit,
     onAddPlaylistClick: () -> Unit
 ) {
@@ -592,6 +627,22 @@ fun ModernTopBar(
             }
 
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // زر الأوامر والبحث الصوتي الذكي
+                IconButton(
+                    onClick = onVoiceClick,
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(DarkCard)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Mic,
+                        contentDescription = "الأوامر والبحث الصوتي",
+                        tint = AccentTeal,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
                 // أيقونة صغيرة وأنيقة لتغيير لغة التطبيق بسرعة
                 Surface(
                     onClick = onToggleLanguage,
@@ -739,7 +790,8 @@ fun CinematicContent(
     onGetChannelSchedule: (Channel) -> List<EpgProgram> = { emptyList() },
     isCasting: Boolean = false,
     onOpenCast: () -> Unit = {},
-    onCastRecording: (File) -> Unit = {}
+    onCastRecording: (File) -> Unit = {},
+    onOpenVoice: () -> Unit = {}
 ) {
     val configuration = LocalConfiguration.current
     val isTabletOrLandscape = configuration.screenWidthDp >= 600
@@ -773,7 +825,8 @@ fun CinematicContent(
                     onAutoHeal = onAutoHeal,
                     onOpenSchedule = { showScheduleDialog = true },
                     isCasting = isCasting,
-                    onOpenCast = onOpenCast
+                    onOpenCast = onOpenCast,
+                    onOpenVoice = onOpenVoice
                 )
             }
         }
@@ -811,7 +864,8 @@ fun CinematicContent(
                         onAutoHeal = onAutoHeal,
                         onOpenSchedule = { showScheduleDialog = true },
                         isCasting = isCasting,
-                        onOpenCast = onOpenCast
+                        onOpenCast = onOpenCast,
+                        onOpenVoice = onOpenVoice
                     )
                 }
             }
@@ -838,7 +892,8 @@ fun CinematicContent(
                     onCastRecording = onCastRecording,
                     isKidsMode = state.isKidsMode,
                     onEnableKidsMode = onEnableKidsMode,
-                    onDisableKidsMode = onDisableKidsMode
+                    onDisableKidsMode = onDisableKidsMode,
+                    onVoiceClick = onOpenVoice
                 )
             }
         }
@@ -884,7 +939,8 @@ fun CinematicContent(
                         onAutoHeal = onAutoHeal,
                         onOpenSchedule = { showScheduleDialog = true },
                         isCasting = isCasting,
-                        onOpenCast = onOpenCast
+                        onOpenCast = onOpenCast,
+                        onOpenVoice = onOpenVoice
                     )
                 }
             }
@@ -916,7 +972,8 @@ fun CinematicContent(
                     onCastRecording = onCastRecording,
                     isKidsMode = state.isKidsMode,
                     onEnableKidsMode = onEnableKidsMode,
-                    onDisableKidsMode = onDisableKidsMode
+                    onDisableKidsMode = onDisableKidsMode,
+                    onVoiceClick = onOpenVoice
                 )
             }
         }
@@ -952,7 +1009,8 @@ fun TabContent(
     onCastRecording: (File) -> Unit = {},
     isKidsMode: Boolean = false,
     onEnableKidsMode: () -> Unit = {},
-    onDisableKidsMode: (String) -> Boolean = { false }
+    onDisableKidsMode: (String) -> Boolean = { false },
+    onVoiceClick: () -> Unit = {}
 ) {
     AnimatedContent(
         targetState = currentTab,
@@ -988,7 +1046,8 @@ fun TabContent(
                 categories = state.categories,
                 onSearchChange = onSearchChange,
                 onChannelSelect = onChannelSelect,
-                onFavoriteToggle = onFavoriteToggle
+                onFavoriteToggle = onFavoriteToggle,
+                onVoiceClick = onVoiceClick
             )
             AppTab.SETTINGS -> SettingsView(
                 isArabic = isArabic,
@@ -1681,11 +1740,12 @@ fun ModernSearchView(
     categories: List<String>,
     onSearchChange: (String) -> Unit,
     onChannelSelect: (Channel) -> Unit,
-    onFavoriteToggle: (Channel) -> Unit
+    onFavoriteToggle: (Channel) -> Unit,
+    onVoiceClick: () -> Unit = {}
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         // شريط البحث المودرن
-        SearchBar(query = query, onQueryChange = onSearchChange)
+        SearchBar(query = query, onQueryChange = onSearchChange, onVoiceClick = onVoiceClick)
 
         // شرائح التصنيفات السريعة للنقر بنقرة واحدة
         if (categories.isNotEmpty()) {
@@ -3201,6 +3261,173 @@ fun ClosedCaptionsDialog(
 }
 
 /**
+ * نافذة الاستماع والتفاعل مع الأوامر الصوتية الذكية (Voice Command Dialog)
+ * تصميم نيون مع نبضات ضوئية تفاعلية وعرض حي للنص المسموع
+ */
+@Composable
+fun VoiceCommandDialog(
+    state: VoiceRecognitionState,
+    onDismiss: () -> Unit,
+    onRetry: () -> Unit,
+    onExecuteCommand: (VoiceCommand) -> Unit
+) {
+    // إغلاق تلقائي بعد النجاح بثانية ونصف
+    LaunchedEffect(state) {
+        if (state is VoiceRecognitionState.Success) {
+            onExecuteCommand(state.command)
+            delay(1500)
+            onDismiss()
+        }
+    }
+
+    val infiniteTransition = rememberInfiniteTransition(label = "voice_pulse")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 0.9f,
+        targetValue = 1.15f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "scale"
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Mic,
+                    contentDescription = null,
+                    tint = AccentTeal,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = "الأوامر والبحث الصوتي الذكي",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // أيقونة الميكروفون النابضة
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(CircleShape)
+                        .background(
+                            when (state) {
+                                is VoiceRecognitionState.Success -> AccentTeal.copy(alpha = 0.2f)
+                                is VoiceRecognitionState.Error -> LiveRed.copy(alpha = 0.2f)
+                                else -> AccentTeal.copy(alpha = 0.2f)
+                            }
+                        )
+                        .border(
+                            width = 2.dp,
+                            color = when (state) {
+                                is VoiceRecognitionState.Success -> AccentTeal
+                                is VoiceRecognitionState.Error -> LiveRed
+                                else -> NeonCyan
+                            },
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = when (state) {
+                            is VoiceRecognitionState.Success -> Icons.Default.CheckCircle
+                            is VoiceRecognitionState.Error -> Icons.Default.ErrorOutline
+                            else -> Icons.Default.Mic
+                        },
+                        contentDescription = null,
+                        tint = when (state) {
+                            is VoiceRecognitionState.Success -> AccentTeal
+                            is VoiceRecognitionState.Error -> LiveRed
+                            else -> AccentTeal
+                        },
+                        modifier = Modifier.size(38.dp)
+                    )
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                // النص الحالي أو النتيجة
+                when (state) {
+                    VoiceRecognitionState.Idle, VoiceRecognitionState.Listening -> {
+                        Text(
+                            text = "جاري الاستماع... تحدث الآن",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = NeonCyan
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text = "أمثلة: «شغل الجزيرة»، «أطفال»، «مؤقت النوم»، «كاريوكي»، «سجل»",
+                            style = MaterialTheme.typography.labelSmall,
+                            textAlign = TextAlign.Center,
+                            color = TextSecondary
+                        )
+                    }
+                    is VoiceRecognitionState.Recognizing -> {
+                        Text(
+                            text = "«${state.partialText}»",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    is VoiceRecognitionState.Success -> {
+                        Text(
+                            text = state.feedbackMessage,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = AccentTeal,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    is VoiceRecognitionState.Error -> {
+                        Text(
+                            text = state.errorMessage,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = LiveRed,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        Button(
+                            onClick = onRetry,
+                            colors = ButtonDefaults.buttonColors(containerColor = AccentTeal, contentColor = Color.Black),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("إعادة المحاولة", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("إلغاء", color = TextSecondary)
+            }
+        },
+        containerColor = DarkSurface,
+        titleContentColor = Color.White,
+        textContentColor = Color.White
+    )
+}
+
+/**
  * نافذة جدول برامج القناة (EPG Schedule Dialog) لليوم بالكامل
  */
 @Composable
@@ -3397,7 +3624,8 @@ fun VideoPlayerContainer(
     onAutoHeal: () -> Unit = {},
     onOpenSchedule: () -> Unit = {},
     isCasting: Boolean = false,
-    onOpenCast: () -> Unit = {}
+    onOpenCast: () -> Unit = {},
+    onOpenVoice: () -> Unit = {}
 ) {
     val volume by playerEngine.volume.collectAsState()
     val isMuted by playerEngine.isMuted.collectAsState()
@@ -3871,6 +4099,21 @@ fun VideoPlayerContainer(
                                 imageVector = Icons.Default.ClosedCaption,
                                 contentDescription = "الترجمة التوضيحية (Captions)",
                                 tint = if (isCaptionsEnabled) NeonCyan else AccentTeal,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
+                        // 1.5 زر الأوامر والبحث الصوتي الذكي (Voice Commands)
+                        IconButton(
+                            onClick = onOpenVoice,
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(Color.Black.copy(alpha = 0.65f), CircleShape)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Mic,
+                                contentDescription = "الأوامر والبحث الصوتي الذكي",
+                                tint = AccentTeal,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -4830,16 +5073,25 @@ fun RecordingBar(
  * شريط البحث المودرن
  */
 @Composable
-fun SearchBar(query: String, onQueryChange: (String) -> Unit) {
+fun SearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onVoiceClick: () -> Unit = {}
+) {
     OutlinedTextField(
         value = query,
         onValueChange = onQueryChange,
         placeholder = { Text(stringResource(R.string.search_hint), style = MaterialTheme.typography.bodyMedium) },
         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = AccentTeal) },
         trailingIcon = {
-            if (query.isNotEmpty()) {
-                IconButton(onClick = { onQueryChange("") }) {
-                    Icon(Icons.Default.Close, contentDescription = null, tint = Color.LightGray)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (query.isNotEmpty()) {
+                    IconButton(onClick = { onQueryChange("") }) {
+                        Icon(Icons.Default.Close, contentDescription = null, tint = Color.LightGray)
+                    }
+                }
+                IconButton(onClick = onVoiceClick) {
+                    Icon(Icons.Default.Mic, contentDescription = "الأوامر والبحث الصوتي", tint = AccentTeal)
                 }
             }
         },
