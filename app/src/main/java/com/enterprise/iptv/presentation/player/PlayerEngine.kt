@@ -10,9 +10,14 @@ import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.audio.AudioSink
+import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
+import com.enterprise.iptv.domain.audio.VocalDspAudioProcessor
+import com.enterprise.iptv.domain.audio.VocalDspMode
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,10 +47,14 @@ data class StreamServer(
 @OptIn(UnstableApi::class)
 @Singleton
 class PlayerEngine @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    val vocalDspProcessor: VocalDspAudioProcessor
 ) {
     private val _playbackStatus = MutableStateFlow<PlaybackStatus>(PlaybackStatus.Idle)
     val playbackStatus = _playbackStatus.asStateFlow()
+
+    // معالج الصوت الترددي اللحظي (عازل الصوت وموضح الكلام)
+    val vocalDspMode = vocalDspProcessor.currentMode
 
     // Stream Servers (Primary + Backups) & Auto-Failover
     private val _servers = MutableStateFlow<List<StreamServer>>(emptyList())
@@ -121,7 +130,22 @@ class PlayerEngine @Inject constructor(
             .setPrioritizeTimeOverSizeThresholds(true)
             .build()
 
-        ExoPlayer.Builder(context)
+        // ربط معالج الصوت الرقمي (عازل الصوت وموضح الكلام) بمسار الصوت في ExoPlayer
+        val audioSink = DefaultAudioSink.Builder(context)
+            .setAudioProcessors(arrayOf(vocalDspProcessor))
+            .build()
+
+        val renderersFactory = object : DefaultRenderersFactory(context) {
+            override fun buildAudioSink(
+                context: Context,
+                enableFloatOutput: Boolean,
+                enableAudioTrackPlaybackParams: Boolean
+            ): AudioSink {
+                return audioSink
+            }
+        }
+
+        ExoPlayer.Builder(context, renderersFactory)
             .setMediaSourceFactory(DefaultMediaSourceFactory(httpDataSource))
             .setLoadControl(loadControl)
             .build().apply {
@@ -257,6 +281,14 @@ class PlayerEngine @Inject constructor(
             .buildUpon()
             .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, next)
             .build()
+    }
+
+    fun cycleVocalDspMode(): VocalDspMode {
+        return vocalDspProcessor.cycleMode()
+    }
+
+    fun setVocalDspMode(mode: VocalDspMode) {
+        vocalDspProcessor.setMode(mode)
     }
 
     fun playFile(file: java.io.File) {

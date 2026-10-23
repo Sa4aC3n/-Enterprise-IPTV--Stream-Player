@@ -61,6 +61,7 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.enterprise.iptv.R
+import com.enterprise.iptv.domain.audio.VocalDspMode
 import com.enterprise.iptv.domain.cast.CastDevice
 import com.enterprise.iptv.domain.cast.CastState
 import com.enterprise.iptv.domain.model.Channel
@@ -3045,10 +3046,20 @@ fun VideoPlayerContainer(
     val servers by playerEngine.servers.collectAsState()
     val currentServerIndex by playerEngine.currentServerIndex.collectAsState()
     val isAudioOnly by playerEngine.isAudioOnly.collectAsState()
+    val dspMode by playerEngine.vocalDspMode.collectAsState()
 
     var showControls by remember { mutableStateOf(true) }
     var showSettingsDialog by remember { mutableStateOf(false) }
     var showOsd by remember { mutableStateOf(false) }
+    var dspBadgeMessage by remember { mutableStateOf<String?>(null) }
+
+    // إخفاء إشعار معالج الصوت التلقائي بعد ثانيتين ونصف
+    LaunchedEffect(dspBadgeMessage) {
+        if (dspBadgeMessage != null) {
+            delay(2500)
+            dspBadgeMessage = null
+        }
+    }
 
     // شريط معلومات القناة (OSD) عند التبديل الخاطف بين القنوات
     LaunchedEffect(channelName) {
@@ -3392,6 +3403,32 @@ fun VideoPlayerContainer(
                             )
                         }
 
+                        // 1.2 معالج الصوت الترددي الفوري (عازل الصوت وموضح الكلام)
+                        IconButton(
+                            onClick = {
+                                val next = playerEngine.cycleVocalDspMode()
+                                dspBadgeMessage = when (next) {
+                                    VocalDspMode.OFF -> "معالج الصوت: إيقاف (الأصلي)"
+                                    VocalDspMode.ENHANCE_VOCALS -> "معالج الصوت: توضيح الكلام (خفت الموسيقى)"
+                                    VocalDspMode.REMOVE_VOCALS -> "معالج الصوت: عازل الصوت (كاريوكي / موسيقى فقط)"
+                                }
+                            },
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(Color.Black.copy(alpha = 0.65f), CircleShape)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.GraphicEq,
+                                contentDescription = "معالج الصوت الذكي (عزل الصوت / توضيح الكلام)",
+                                tint = when (dspMode) {
+                                    VocalDspMode.OFF -> AccentTeal
+                                    VocalDspMode.ENHANCE_VOCALS -> NeonCyan
+                                    VocalDspMode.REMOVE_VOCALS -> LiveRed
+                                },
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
                         // 1. زر الترس: يفتح إعدادات جودة البث والسيرفرات البديلة
                         IconButton(
                             onClick = { showSettingsDialog = true },
@@ -3455,6 +3492,26 @@ fun VideoPlayerContainer(
                             Icon(Icons.Default.HealthAndSafety, contentDescription = null, tint = NeonCyan, modifier = Modifier.size(14.dp))
                             Spacer(Modifier.width(6.dp))
                             Text(text = autoHealStatus, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+
+                if (dspBadgeMessage != null) {
+                    Surface(
+                        color = Color.Black.copy(alpha = 0.85f),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, AccentTeal.copy(alpha = 0.8f)),
+                        modifier = Modifier
+                            .padding(top = if (autoHealStatus != null) 80.dp else 48.dp)
+                            .align(Alignment.TopCenter)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.GraphicEq, contentDescription = null, tint = AccentTeal, modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(text = dspBadgeMessage ?: "", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -3645,6 +3702,102 @@ fun VideoPlayerContainer(
                                         checkedTrackColor = AccentTeal.copy(alpha = 0.5f)
                                     )
                                 )
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        HorizontalDivider(color = DarkBorder)
+                        Spacer(Modifier.height(4.dp))
+                    }
+
+                    // قسم معالج الصوت الترددي اللحظي (عازل الصوت وموضح الكلام)
+                    item {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = DarkCard,
+                            border = BorderStroke(1.dp, if (dspMode != VocalDspMode.OFF) AccentTeal else DarkBorder),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.GraphicEq,
+                                            contentDescription = null,
+                                            tint = if (dspMode != VocalDspMode.OFF) AccentTeal else Color.White,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(
+                                            text = "معالج الصوت الذكي (DSP Audio)",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                    }
+                                    Text(
+                                        text = when (dspMode) {
+                                            VocalDspMode.OFF -> "معطل"
+                                            VocalDspMode.ENHANCE_VOCALS -> "توضيح الكلام"
+                                            VocalDspMode.REMOVE_VOCALS -> "عازل الصوت"
+                                        },
+                                        color = when (dspMode) {
+                                            VocalDspMode.OFF -> TextSecondary
+                                            VocalDspMode.ENHANCE_VOCALS -> NeonCyan
+                                            VocalDspMode.REMOVE_VOCALS -> LiveRed
+                                        },
+                                        fontWeight = FontWeight.Bold,
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    text = "معالجة فورية بدون إنترنت (Zero Latency) لعزل الصوت الغنائي أو تضخيم المحادثات",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = TextSecondary
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    VocalDspMode.entries.forEach { mode ->
+                                        val isCurrent = dspMode == mode
+                                        val modeColor = when (mode) {
+                                            VocalDspMode.OFF -> AccentTeal
+                                            VocalDspMode.ENHANCE_VOCALS -> NeonCyan
+                                            VocalDspMode.REMOVE_VOCALS -> LiveRed
+                                        }
+                                        Surface(
+                                            onClick = {
+                                                playerEngine.setVocalDspMode(mode)
+                                                dspBadgeMessage = "معالج الصوت: ${mode.titleAr}"
+                                            },
+                                            shape = RoundedCornerShape(8.dp),
+                                            color = if (isCurrent) modeColor.copy(alpha = 0.25f) else DarkBackground,
+                                            border = BorderStroke(1.dp, if (isCurrent) modeColor else DarkBorder),
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Text(
+                                                text = when (mode) {
+                                                    VocalDspMode.OFF -> "أصلي"
+                                                    VocalDspMode.ENHANCE_VOCALS -> "توضيح صوت"
+                                                    VocalDspMode.REMOVE_VOCALS -> "عازل صوت"
+                                                },
+                                                textAlign = TextAlign.Center,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (isCurrent) modeColor else Color.White,
+                                                modifier = Modifier.padding(vertical = 8.dp)
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                         Spacer(Modifier.height(8.dp))
