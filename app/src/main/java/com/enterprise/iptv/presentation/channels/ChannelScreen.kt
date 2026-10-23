@@ -76,9 +76,12 @@ import com.enterprise.iptv.presentation.cast.CastDeviceDialog
 import com.enterprise.iptv.presentation.multiview.MultiViewContainer
 import com.enterprise.iptv.presentation.multiview.MultiViewLayout
 import com.enterprise.iptv.presentation.multiview.MultiViewManager
+import com.enterprise.iptv.presentation.player.GestureHudOverlay
+import com.enterprise.iptv.presentation.player.GestureHudState
 import com.enterprise.iptv.presentation.player.PlaybackStatus
 import com.enterprise.iptv.presentation.player.PlayerEngine
 import com.enterprise.iptv.presentation.player.VideoQuality
+import com.enterprise.iptv.presentation.player.videoPlayerGestures
 import com.enterprise.iptv.presentation.theme.*
 import kotlinx.coroutines.delay
 
@@ -3758,6 +3761,8 @@ fun VideoPlayerContainer(
     var showCaptionsDialog by remember { mutableStateOf(false) }
     var showOsd by remember { mutableStateOf(false) }
     var dspBadgeMessage by remember { mutableStateOf<String?>(null) }
+    var gestureHudState by remember { mutableStateOf<GestureHudState>(GestureHudState.Hidden) }
+    val context = LocalContext.current
 
     // إخفاء إشعار معالج الصوت التلقائي بعد ثانيتين ونصف
     LaunchedEffect(dspBadgeMessage) {
@@ -3787,12 +3792,22 @@ fun VideoPlayerContainer(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .clickable { showControls = !showControls },
+            .videoPlayerGestures(
+                context = context,
+                isLiveStream = isLiveStream,
+                durationMs = durationMs,
+                currentPositionMs = currentPositionMs,
+                volume = volume,
+                onVolumeChange = { playerEngine.setVolume(it) },
+                onSeekTo = { playerEngine.seekTo(it) },
+                onToggleControls = { showControls = !showControls },
+                onHudChange = { gestureHudState = it }
+            ),
         contentAlignment = Alignment.Center
     ) {
         AndroidView(
-            factory = { context ->
-                PlayerView(context).apply {
+            factory = { ctx ->
+                PlayerView(ctx).apply {
                     player = playerEngine.exoPlayer
                     useController = false // إلغاء أزرار إكسوبلاير الافتراضية لمنع التداخل والازدحام نهائياً
                     setResizeMode(resizeMode)
@@ -3806,6 +3821,12 @@ fun VideoPlayerContainer(
                 playerView.setResizeMode(resizeMode)
             },
             modifier = Modifier.fillMaxSize()
+        )
+
+        // مؤشر التحكم اللمسي والإيماءات في منتصف الشاشة (Gesture HUD)
+        GestureHudOverlay(
+            state = gestureHudState,
+            modifier = Modifier.align(Alignment.Center)
         )
 
         // شريط عرض الترجمة التوضيحية السينمائي (Subtitle & Live Captions Overlay)
