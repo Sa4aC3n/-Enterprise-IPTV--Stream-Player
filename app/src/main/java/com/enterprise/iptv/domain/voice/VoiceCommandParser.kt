@@ -59,6 +59,11 @@ class VoiceCommandParser @Inject constructor() {
             return VoiceCommand.OpenBackupRestore
         }
 
+        // 7.3 أوامر دليل البرامج والتذكيرات
+        if (text.contains("جدول") || text.contains("دليل") || text.contains("مواعيد") || text.contains("تذكير") || text.contains("epg") || text.contains("schedule")) {
+            return VoiceCommand.OpenSchedule
+        }
+
         // 8. أوامر البحث الصريحة
         val searchPrefixes = listOf("ابحث عن", "ابحث عن قناة", "بحث عن", "بحث", "دور على", "search for", "find")
         for (prefix in searchPrefixes) {

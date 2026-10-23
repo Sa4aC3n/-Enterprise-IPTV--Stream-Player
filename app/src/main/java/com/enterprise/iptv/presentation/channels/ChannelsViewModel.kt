@@ -18,6 +18,7 @@ import com.enterprise.iptv.domain.model.Channel
 import com.enterprise.iptv.domain.model.EpgProgram
 import com.enterprise.iptv.domain.recorder.RecordState
 import com.enterprise.iptv.domain.recorder.StreamRecorder
+import com.enterprise.iptv.domain.reminder.EpgReminderManager
 import com.enterprise.iptv.domain.repository.ChannelRepository
 import com.enterprise.iptv.domain.voice.VoiceCommand
 import com.enterprise.iptv.domain.voice.VoiceRecognitionManager
@@ -71,12 +72,34 @@ class ChannelsViewModel @Inject constructor(
     val autoHealer: StreamAutoHealer,
     val castManager: DlnaCastManager,
     val voiceManager: VoiceRecognitionManager,
-    val backupRestoreManager: BackupRestoreManager
+    val backupRestoreManager: BackupRestoreManager,
+    val reminderManager: EpgReminderManager
 ) : ViewModel() {
 
     val isMultiViewActive = multiViewManager.isActive
     val multiViewLayout = multiViewManager.layout
     val isKidsModeActive = kidsSpaceManager.isKidsModeActive
+
+    // إدارة تنبيهات وتذكيرات البرامج والمباريات (EPG Reminders)
+    val scheduledReminders = reminderManager.scheduledReminders
+    private val _showScheduleDialog = MutableStateFlow(false)
+    val showScheduleDialog = _showScheduleDialog.asStateFlow()
+
+    fun setShowScheduleDialog(show: Boolean) {
+        _showScheduleDialog.value = show
+    }
+
+    fun toggleReminder(channel: Channel, program: EpgProgram): Boolean {
+        return reminderManager.toggleReminder(channel, program)
+    }
+
+    fun isReminderSet(programId: String): Boolean {
+        return reminderManager.isReminderSet(programId)
+    }
+
+    fun playStreamDirect(streamUrl: String, channelName: String) {
+        playerEngine.playChannel(streamUrl)
+    }
 
     // إدارة النسخ الاحتياطي والاستعادة (Backup & Restore via JSON & SAF)
     val backupOperationResult = backupRestoreManager.lastOperationResult
@@ -595,6 +618,9 @@ class ChannelsViewModel @Inject constructor(
             VoiceCommand.OpenQualitySettings -> {}
             VoiceCommand.OpenBackupRestore -> {
                 setShowBackupDialog(true)
+            }
+            VoiceCommand.OpenSchedule -> {
+                setShowScheduleDialog(true)
             }
             is VoiceCommand.Unrecognized -> {
                 if (command.rawText.isNotBlank()) {

@@ -1,6 +1,7 @@
 package com.enterprise.iptv
 
 import android.app.PictureInPictureParams
+import android.content.Intent
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
@@ -33,6 +34,8 @@ class MainActivity : ComponentActivity() {
             viewModel.uiState.value is ChannelsUiState.Loading
         }
 
+        handleReminderIntent(intent)
+
         setContent {
             EnterpriseIPTVTheme {
                 ChannelScreen(
@@ -40,6 +43,19 @@ class MainActivity : ComponentActivity() {
                     onEnterPip = { enterPipMode() }
                 )
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleReminderIntent(intent)
+    }
+
+    private fun handleReminderIntent(intent: Intent?) {
+        val streamUrl = intent?.getStringExtra("EXTRA_STREAM_URL")
+        if (!streamUrl.isNullOrBlank()) {
+            val channelName = intent.getStringExtra("EXTRA_CHANNEL_NAME") ?: ""
+            viewModel.playStreamDirect(streamUrl, channelName)
         }
     }
 

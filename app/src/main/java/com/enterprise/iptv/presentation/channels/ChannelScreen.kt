@@ -70,6 +70,7 @@ import com.enterprise.iptv.domain.chapter.SmartChapter
 import com.enterprise.iptv.domain.meter.NetworkDataStats
 import com.enterprise.iptv.domain.model.Channel
 import com.enterprise.iptv.domain.model.EpgProgram
+import com.enterprise.iptv.domain.reminder.EpgReminder
 import com.enterprise.iptv.domain.recorder.RecordState
 import com.enterprise.iptv.domain.voice.VoiceCommand
 import com.enterprise.iptv.domain.voice.VoiceRecognitionState
@@ -266,6 +267,8 @@ fun ChannelScreen(
                         val networkStats by viewModel.networkStats.collectAsState()
                         val showBackupDialog by viewModel.showBackupDialog.collectAsState()
                         val backupResult by viewModel.backupOperationResult.collectAsState()
+                        val scheduledReminders by viewModel.scheduledReminders.collectAsState()
+                        val showScheduleDialog by viewModel.showScheduleDialog.collectAsState()
                         var showCastDialog by remember { mutableStateOf(false) }
                         var recordingToCast by remember { mutableStateOf<File?>(null) }
 
@@ -318,7 +321,11 @@ fun ChannelScreen(
                             },
                             networkStats = networkStats,
                             onResetDataMeter = { viewModel.resetSessionDataCounter() },
-                            onOpenBackupRestore = { viewModel.setShowBackupDialog(true) }
+                            onOpenBackupRestore = { viewModel.setShowBackupDialog(true) },
+                            scheduledReminders = scheduledReminders,
+                            onToggleReminder = { ch, prog -> viewModel.toggleReminder(ch, prog) },
+                            showScheduleDialog = showScheduleDialog,
+                            onToggleScheduleDialog = { viewModel.setShowScheduleDialog(it) }
                         )
 
                         // نافذة النسخ الاحتياطي واستعادة المفضلة (Backup & Restore Dialog)
@@ -820,11 +827,14 @@ fun CinematicContent(
     onOpenVoice: () -> Unit = {},
     networkStats: NetworkDataStats? = null,
     onResetDataMeter: () -> Unit = {},
-    onOpenBackupRestore: () -> Unit = {}
+    onOpenBackupRestore: () -> Unit = {},
+    scheduledReminders: Map<String, EpgReminder> = emptyMap(),
+    onToggleReminder: (Channel, EpgProgram) -> Unit = { _, _ -> },
+    showScheduleDialog: Boolean = false,
+    onToggleScheduleDialog: (Boolean) -> Unit = {}
 ) {
     val configuration = LocalConfiguration.current
     val isTabletOrLandscape = configuration.screenWidthDp >= 600
-    var showScheduleDialog by remember { mutableStateOf(false) }
 
     if (isFullscreen) {
         // وضع ملء الشاشة الكامل
@@ -852,7 +862,7 @@ fun CinematicContent(
                     epgNext = state.epgNext,
                     autoHealStatus = state.autoHealStatus,
                     onAutoHeal = onAutoHeal,
-                    onOpenSchedule = { showScheduleDialog = true },
+                    onOpenSchedule = { onToggleScheduleDialog(true) },
                     isCasting = isCasting,
                     onOpenCast = onOpenCast,
                     onOpenVoice = onOpenVoice
@@ -891,7 +901,7 @@ fun CinematicContent(
                         epgNext = state.epgNext,
                         autoHealStatus = state.autoHealStatus,
                         onAutoHeal = onAutoHeal,
-                        onOpenSchedule = { showScheduleDialog = true },
+                        onOpenSchedule = { onToggleScheduleDialog(true) },
                         isCasting = isCasting,
                         onOpenCast = onOpenCast,
                         onOpenVoice = onOpenVoice
@@ -969,7 +979,7 @@ fun CinematicContent(
                         epgNext = state.epgNext,
                         autoHealStatus = state.autoHealStatus,
                         onAutoHeal = onAutoHeal,
-                        onOpenSchedule = { showScheduleDialog = true },
+                        onOpenSchedule = { onToggleScheduleDialog(true) },
                         isCasting = isCasting,
                         onOpenCast = onOpenCast,
                         onOpenVoice = onOpenVoice
@@ -1018,7 +1028,9 @@ fun CinematicContent(
         ChannelScheduleDialog(
             channel = state.currentChannel,
             schedule = onGetChannelSchedule(state.currentChannel),
-            onDismiss = { showScheduleDialog = false }
+            scheduledReminders = scheduledReminders,
+            onToggleReminder = onToggleReminder,
+            onDismiss = { onToggleScheduleDialog(false) }
         )
     }
 }
@@ -1048,7 +1060,9 @@ fun TabContent(
     onVoiceClick: () -> Unit = {},
     networkStats: NetworkDataStats? = null,
     onResetDataMeter: () -> Unit = {},
-    onOpenBackupRestore: () -> Unit = {}
+    onOpenBackupRestore: () -> Unit = {},
+    scheduledReminders: Map<String, EpgReminder> = emptyMap(),
+    onToggleReminder: (Channel, EpgProgram) -> Unit = { _, _ -> }
 ) {
     AnimatedContent(
         targetState = currentTab,
@@ -1946,7 +1960,9 @@ fun SettingsView(
     onDisableKidsMode: (String) -> Boolean = { false },
     networkStats: NetworkDataStats? = null,
     onResetDataMeter: () -> Unit = {},
-    onOpenBackupRestore: () -> Unit = {}
+    onOpenBackupRestore: () -> Unit = {},
+    scheduledReminders: Map<String, EpgReminder> = emptyMap(),
+    onToggleReminder: (Channel, EpgProgram) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
     var showUpdateDialog by remember { mutableStateOf(false) }
@@ -3723,12 +3739,14 @@ fun VoiceCommandDialog(
 }
 
 /**
- * نافذة جدول برامج القناة (EPG Schedule Dialog) لليوم بالكامل
+ * نافذة جدول برامج القناة (EPG Schedule Dialog) لليوم بالكامل مع دعم تنبيهات وتذكيرات البرامج والمباريات
  */
 @Composable
 fun ChannelScheduleDialog(
     channel: Channel?,
     schedule: List<EpgProgram>,
+    scheduledReminders: Map<String, EpgReminder> = emptyMap(),
+    onToggleReminder: (Channel, EpgProgram) -> Unit = { _, _ -> },
     onDismiss: () -> Unit
 ) {
     if (channel == null) return
@@ -3740,7 +3758,7 @@ fun ChannelScheduleDialog(
                 Spacer(Modifier.width(8.dp))
                 Column {
                     Text("دليل برامج ${channel.name}", fontWeight = FontWeight.Bold, color = Color.White, style = MaterialTheme.typography.titleMedium)
-                    Text("جدول البث لليوم على مدار 24 ساعة", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
+                    Text("جدول البث لليوم • اضغط 🔔 للتنبيه قبل الموعد بـ 5 دقائق", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
                 }
             }
         },
@@ -3751,10 +3769,13 @@ fun ChannelScheduleDialog(
             ) {
                 items(schedule, key = { it.id }) { program ->
                     val isAiring = program.isNowPlaying
+                    val isFuture = !isAiring && program.startEpochMs > System.currentTimeMillis()
+                    val hasReminder = scheduledReminders.containsKey(program.id)
+
                     Surface(
                         shape = RoundedCornerShape(10.dp),
-                        color = if (isAiring) AccentTeal.copy(alpha = 0.15f) else DarkCard,
-                        border = BorderStroke(1.dp, if (isAiring) AccentTeal else DarkBorder),
+                        color = if (isAiring) AccentTeal.copy(alpha = 0.15f) else if (hasReminder) NeonCyan.copy(alpha = 0.12f) else DarkCard,
+                        border = BorderStroke(1.dp, if (isAiring) AccentTeal else if (hasReminder) NeonCyan.copy(alpha = 0.6f) else DarkBorder),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
@@ -3765,10 +3786,12 @@ fun ChannelScheduleDialog(
                             ) {
                                 Text(
                                     text = program.title,
-                                    fontWeight = if (isAiring) FontWeight.Bold else FontWeight.SemiBold,
-                                    color = if (isAiring) AccentTeal else Color.White,
-                                    style = MaterialTheme.typography.bodyMedium
+                                    fontWeight = if (isAiring || hasReminder) FontWeight.Bold else FontWeight.SemiBold,
+                                    color = if (isAiring) AccentTeal else if (hasReminder) NeonCyan else Color.White,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.weight(1f)
                                 )
+                                Spacer(Modifier.width(8.dp))
                                 if (isAiring) {
                                     Box(
                                         modifier = Modifier
@@ -3777,17 +3800,43 @@ fun ChannelScheduleDialog(
                                     ) {
                                         Text("يعرض الآن", color = Color.Black, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold)
                                     }
+                                } else if (isFuture) {
+                                    IconButton(
+                                        onClick = { onToggleReminder(channel, program) },
+                                        modifier = Modifier.size(34.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = if (hasReminder) Icons.Default.NotificationsActive else Icons.Default.NotificationAdd,
+                                            contentDescription = if (hasReminder) "إلغاء التنبيه" else "تفعيل التنبيه",
+                                            tint = if (hasReminder) NeonCyan else AccentTeal,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
                                 }
                             }
                             Spacer(Modifier.height(4.dp))
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Schedule, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(13.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text(
-                                    text = program.formattedTimeRange,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = TextSecondary
-                                )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Schedule, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(13.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        text = program.formattedTimeRange,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = TextSecondary
+                                    )
+                                }
+                                if (hasReminder) {
+                                    Text(
+                                        text = "🔔 تنبيه مفعل",
+                                        color = NeonCyan,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
                             if (isAiring) {
                                 Spacer(Modifier.height(6.dp))

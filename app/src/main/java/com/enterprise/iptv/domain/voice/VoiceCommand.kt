@@ -60,6 +60,11 @@ sealed interface VoiceCommand {
     data object OpenBackupRestore : VoiceCommand
 
     /**
+     * فتح دليل وجدول البرامج والتذكيرات (EPG Schedule & Reminders)
+     */
+    data object OpenSchedule : VoiceCommand
+
+    /**
      * أمر غير معروف أو عام
      */
     data class Unrecognized(val rawText: String) : VoiceCommand
