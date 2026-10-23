@@ -17,12 +17,14 @@ import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.common.TrackSelectionOverride
 import com.enterprise.iptv.domain.audio.VocalDspAudioProcessor
 import com.enterprise.iptv.domain.audio.VocalDspMode
 import com.enterprise.iptv.domain.caption.OnDeviceCaptionEngine
 import com.enterprise.iptv.domain.caption.SubtitleTrack
 import com.enterprise.iptv.domain.chapter.SmartChapter
 import com.enterprise.iptv.domain.chapter.SmartChapterManager
+import com.enterprise.iptv.domain.meter.DataUsageMeter
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -59,10 +61,18 @@ class PlayerEngine @Inject constructor(
     @ApplicationContext private val context: Context,
     val vocalDspProcessor: VocalDspAudioProcessor,
     val smartChapterManager: SmartChapterManager,
-    val onDeviceCaptionEngine: OnDeviceCaptionEngine
+    val onDeviceCaptionEngine: OnDeviceCaptionEngine,
+    val dataUsageMeter: DataUsageMeter
 ) {
     private val _playbackStatus = MutableStateFlow<PlaybackStatus>(PlaybackStatus.Idle)
     val playbackStatus = _playbackStatus.asStateFlow()
+
+    // عداد استهلاك البيانات والسرعة اللحظية للبث (Data Usage & Speed Meter)
+    val networkStats = dataUsageMeter.dataStats
+
+    fun resetSessionDataCounter() {
+        dataUsageMeter.resetSessionCounter()
+    }
 
     // معالج الصوت الترددي اللحظي (عازل الصوت وموضح الكلام)
     val vocalDspMode = vocalDspProcessor.currentMode
@@ -179,6 +189,7 @@ class PlayerEngine @Inject constructor(
             .setAllowCrossProtocolRedirects(true)
             .setConnectTimeoutMs(15_000)
             .setReadTimeoutMs(15_000)
+            .setTransferListener(dataUsageMeter)
 
         // إعداد متحكم تخزين فائق السرعة لتقليل زمن انتظار فتح وتبديل القنوات (Zero-Buffer Fast Zapping)
         val loadControl = DefaultLoadControl.Builder()
@@ -216,7 +227,7 @@ class PlayerEngine @Inject constructor(
     }
 
     private fun extractAvailableQualities(tracks: Tracks) {
-        val qualities = mutableListOf<VideoQuality>()
+        val streamQualities = mutableListOf<VideoQuality>()
         for (group in tracks.groups) {
             if (group.type == C.TRACK_TYPE_VIDEO) {
                 for (i in 0 until group.length) {
@@ -229,9 +240,10 @@ class PlayerEngine @Inject constructor(
                             format.height >= 360 -> "360p"
                             else -> "${format.height}p"
                         }
-                        qualities.add(
+                        val bitrateLabel = if (format.bitrate > 0) " (${format.bitrate / 1000}k)" else ""
+                        streamQualities.add(
                             VideoQuality(
-                                label = label,
+                                label = "$label$bitrateLabel",
                                 width = format.width,
                                 height = format.height,
                                 bitrate = format.bitrate
@@ -241,7 +253,25 @@ class PlayerEngine @Inject constructor(
                 }
             }
         }
-        _availableQualities.value = qualities.distinctBy { it.height }.sortedByDescending { it.height }
+        val distinct = streamQualities.distinctBy { it.height }.sortedByDescending { it.height }
+        if (distinct.size > 1) {
+            _availableQualities.value = distinct
+        } else {
+            // توفير خيارات الجودة القياسية لتمكين المستخدم من تحديد سقف استهلاك الباقة
+            val baseList = distinct.toMutableList()
+            val standardPresets = listOf(
+                VideoQuality("1080p FHD (أعلى دقة)", 1920, 1080),
+                VideoQuality("720p HD (متوازن)", 1280, 720),
+                VideoQuality("480p SD (موفر للباقة)", 854, 480),
+                VideoQuality("360p (أقصى توفير)", 640, 360)
+            )
+            for (preset in standardPresets) {
+                if (baseList.none { it.height == preset.height }) {
+                    baseList.add(preset)
+                }
+            }
+            _availableQualities.value = baseList.sortedByDescending { it.height }
+        }
     }
 
     private fun extractAvailableSubtitles(tracks: Tracks) {
@@ -317,6 +347,7 @@ class PlayerEngine @Inject constructor(
     }
 
     fun playChannel(streamUrl: String, backupUrls: List<String> = emptyList()) {
+        dataUsageMeter.resetCurrentStreamCounter()
         _isLiveStream.value = true
         _smartChapters.value = emptyList()
         _currentChapter.value = null
@@ -354,17 +385,33 @@ class PlayerEngine @Inject constructor(
     fun setQuality(quality: VideoQuality?) {
         _selectedQuality.value = quality
         if (quality == null) {
-            // Auto Quality
+            // وضع التكيف التلقائي (Auto Adaptive)
             exoPlayer.trackSelectionParameters = exoPlayer.trackSelectionParameters
                 .buildUpon()
                 .clearVideoSizeConstraints()
+                .clearOverridesOfType(C.TRACK_TYPE_VIDEO)
                 .build()
         } else {
-            // Constrain max video size to selected quality
-            exoPlayer.trackSelectionParameters = exoPlayer.trackSelectionParameters
+            val builder = exoPlayer.trackSelectionParameters
                 .buildUpon()
                 .setMaxVideoSize(quality.width, quality.height)
-                .build()
+            if (quality.bitrate > 0) {
+                builder.setMaxVideoBitrate(quality.bitrate)
+            }
+            for (group in exoPlayer.currentTracks.groups) {
+                if (group.type == C.TRACK_TYPE_VIDEO) {
+                    for (i in 0 until group.length) {
+                        val format = group.getTrackFormat(i)
+                        if (format.height == quality.height) {
+                            builder.setOverrideForType(
+                                TrackSelectionOverride(group.mediaTrackGroup, i)
+                            )
+                            break
+                        }
+                    }
+                }
+            }
+            exoPlayer.trackSelectionParameters = builder.build()
         }
     }
 
@@ -495,6 +542,7 @@ class PlayerEngine @Inject constructor(
     }
 
     fun playFile(file: java.io.File) {
+        dataUsageMeter.resetCurrentStreamCounter()
         _isLiveStream.value = false
         _smartChapters.value = emptyList()
         _currentChapter.value = null
@@ -513,6 +561,7 @@ class PlayerEngine @Inject constructor(
     fun release() {
         progressTickerJob?.cancel()
         playerScope.cancel()
+        dataUsageMeter.release()
         onDeviceCaptionEngine.stopListening()
         exoPlayer.removeListener(playerListener)
         exoPlayer.release()

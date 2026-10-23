@@ -66,6 +66,7 @@ import com.enterprise.iptv.domain.caption.SubtitleTrack
 import com.enterprise.iptv.domain.cast.CastDevice
 import com.enterprise.iptv.domain.cast.CastState
 import com.enterprise.iptv.domain.chapter.SmartChapter
+import com.enterprise.iptv.domain.meter.NetworkDataStats
 import com.enterprise.iptv.domain.model.Channel
 import com.enterprise.iptv.domain.model.EpgProgram
 import com.enterprise.iptv.domain.recorder.RecordState
@@ -257,6 +258,7 @@ fun ChannelScreen(
                         val isScanningForCast by viewModel.isScanningForCast.collectAsState()
                         val activeCastDevice by viewModel.activeCastDevice.collectAsState()
                         val castState by viewModel.castState.collectAsState()
+                        val networkStats by viewModel.networkStats.collectAsState()
                         var showCastDialog by remember { mutableStateOf(false) }
                         var recordingToCast by remember { mutableStateOf<File?>(null) }
 
@@ -306,7 +308,9 @@ fun ChannelScreen(
                             onOpenVoice = {
                                 viewModel.startVoiceListening()
                                 showVoiceDialog = true
-                            }
+                            },
+                            networkStats = networkStats,
+                            onResetDataMeter = { viewModel.resetSessionDataCounter() }
                         )
 
                         // نافذة اختيار والتحكم في الشاشات الذكية (DLNA / Cast Dialog)
@@ -432,6 +436,8 @@ fun ChannelScreen(
                             viewModel.executeVoiceCommand(cmd)
                             if (cmd is VoiceCommand.Search || cmd is VoiceCommand.Unrecognized) {
                                 currentTab = AppTab.SEARCH
+                            } else if (cmd is VoiceCommand.OpenQualitySettings) {
+                                currentTab = AppTab.SETTINGS
                             }
                         }
                     )
@@ -791,7 +797,9 @@ fun CinematicContent(
     isCasting: Boolean = false,
     onOpenCast: () -> Unit = {},
     onCastRecording: (File) -> Unit = {},
-    onOpenVoice: () -> Unit = {}
+    onOpenVoice: () -> Unit = {},
+    networkStats: NetworkDataStats? = null,
+    onResetDataMeter: () -> Unit = {}
 ) {
     val configuration = LocalConfiguration.current
     val isTabletOrLandscape = configuration.screenWidthDp >= 600
@@ -893,7 +901,9 @@ fun CinematicContent(
                     isKidsMode = state.isKidsMode,
                     onEnableKidsMode = onEnableKidsMode,
                     onDisableKidsMode = onDisableKidsMode,
-                    onVoiceClick = onOpenVoice
+                    onVoiceClick = onOpenVoice,
+                    networkStats = networkStats,
+                    onResetDataMeter = onResetDataMeter
                 )
             }
         }
@@ -973,7 +983,9 @@ fun CinematicContent(
                     isKidsMode = state.isKidsMode,
                     onEnableKidsMode = onEnableKidsMode,
                     onDisableKidsMode = onDisableKidsMode,
-                    onVoiceClick = onOpenVoice
+                    onVoiceClick = onOpenVoice,
+                    networkStats = networkStats,
+                    onResetDataMeter = onResetDataMeter
                 )
             }
         }
@@ -1010,7 +1022,9 @@ fun TabContent(
     isKidsMode: Boolean = false,
     onEnableKidsMode: () -> Unit = {},
     onDisableKidsMode: (String) -> Boolean = { false },
-    onVoiceClick: () -> Unit = {}
+    onVoiceClick: () -> Unit = {},
+    networkStats: NetworkDataStats? = null,
+    onResetDataMeter: () -> Unit = {}
 ) {
     AnimatedContent(
         targetState = currentTab,
@@ -1059,7 +1073,9 @@ fun TabContent(
                 onCastRecording = onCastRecording,
                 isKidsMode = isKidsMode,
                 onEnableKidsMode = onEnableKidsMode,
-                onDisableKidsMode = onDisableKidsMode
+                onDisableKidsMode = onDisableKidsMode,
+                networkStats = networkStats,
+                onResetDataMeter = onResetDataMeter
             )
         }
     }
@@ -1902,7 +1918,9 @@ fun SettingsView(
     onCastRecording: (File) -> Unit = {},
     isKidsMode: Boolean = false,
     onEnableKidsMode: () -> Unit = {},
-    onDisableKidsMode: (String) -> Boolean = { false }
+    onDisableKidsMode: (String) -> Boolean = { false },
+    networkStats: NetworkDataStats? = null,
+    onResetDataMeter: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var showUpdateDialog by remember { mutableStateOf(false) }
@@ -2065,6 +2083,92 @@ fun SettingsView(
                             tint = AccentTeal,
                             modifier = Modifier.size(22.dp)
                         )
+                    }
+                }
+            }
+        }
+
+        // 1.1 بطاقة استهلاك البيانات وسرعة الاتصال اللحظية
+        if (networkStats != null) {
+            item {
+                Surface(
+                    color = GlassSurface,
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, AccentTeal.copy(alpha = 0.4f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.DataUsage,
+                                    contentDescription = null,
+                                    tint = AccentTeal,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                                Spacer(Modifier.width(10.dp))
+                                Text(
+                                    text = if (isArabic) "استهلاك البيانات والباقة" else "Data Usage & Network Speed",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                            TextButton(onClick = onResetDataMeter) {
+                                Text(if (isArabic) "تصفير العداد" else "Reset", color = TextSecondary, style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+
+                        Spacer(Modifier.height(12.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(
+                                    text = if (isArabic) "إجمالي الجلسة" else "Total Session",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = TextSecondary
+                                )
+                                Text(
+                                    text = networkStats.formattedSessionData,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                            Column {
+                                Text(
+                                    text = if (isArabic) "القناة الحالية" else "Current Channel",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = TextSecondary
+                                )
+                                Text(
+                                    text = networkStats.formattedCurrentStreamData,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = AccentTeal
+                                )
+                            }
+                            Column {
+                                Text(
+                                    text = if (isArabic) "سرعة البث اللحظية" else "Live Speed",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = TextSecondary
+                                )
+                                Text(
+                                    text = networkStats.formattedBitrate,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = NeonCyan
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -3646,6 +3750,7 @@ fun VideoPlayerContainer(
     val availableSubtitles by playerEngine.availableSubtitles.collectAsState()
     val selectedSubtitle by playerEngine.selectedSubtitle.collectAsState()
     val isLiveSpeechCaptionsActive by playerEngine.isLiveSpeechCaptionsActive.collectAsState()
+    val networkStats by playerEngine.networkStats.collectAsState()
 
     var showControls by remember { mutableStateOf(true) }
     var showSettingsDialog by remember { mutableStateOf(false) }
@@ -4116,6 +4221,42 @@ fun VideoPlayerContainer(
                                 tint = AccentTeal,
                                 modifier = Modifier.size(20.dp)
                             )
+                        }
+
+                        // 1.0 شارة عداد سرعة البث واستهلاك البيانات اللحظي
+                        Surface(
+                            onClick = { showSettingsDialog = true },
+                            shape = RoundedCornerShape(16.dp),
+                            color = Color.Black.copy(alpha = 0.65f),
+                            border = BorderStroke(1.dp, DarkBorder)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Speed,
+                                    contentDescription = null,
+                                    tint = NeonCyan,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    text = networkStats.formattedBitrate,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text("•", color = TextSecondary, fontSize = 9.sp)
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    text = networkStats.formattedCurrentStreamData,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = AccentTeal
+                                )
+                            }
                         }
 
                         // 1. زر الترس: يفتح إعدادات جودة البث والسيرفرات البديلة
@@ -4680,6 +4821,85 @@ fun VideoPlayerContainer(
                         Spacer(Modifier.height(8.dp))
                         HorizontalDivider(color = DarkBorder)
                         Spacer(Modifier.height(4.dp))
+                    }
+
+                    // 0. بطاقة عداد استهلاك البيانات وسرعة الاتصال اللحظية
+                    item {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = DarkBackground,
+                            border = BorderStroke(1.dp, DarkBorder),
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.Speed,
+                                            contentDescription = null,
+                                            tint = NeonCyan,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(
+                                            text = "مؤشر السرعة واستهلاك البيانات",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                    }
+                                    TextButton(
+                                        onClick = { playerEngine.resetSessionDataCounter() },
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                                    ) {
+                                        Text("تصفير", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
+                                    }
+                                }
+
+                                Spacer(Modifier.height(8.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    // سرعة البث اللحظية
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text("سرعة التدفق", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
+                                        Text(
+                                            text = networkStats.formattedBitrate,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = NeonCyan
+                                        )
+                                    }
+                                    // استهلاك القناة الحالية
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text("القناة الحالية", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
+                                        Text(
+                                            text = networkStats.formattedCurrentStreamData,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = AccentTeal
+                                        )
+                                    }
+                                    // إجمالي استهلاك الجلسة
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text("إجمالي الجلسة", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
+                                        Text(
+                                            text = networkStats.formattedSessionData,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
                     }
 
                     // 1. قسم جودة البث

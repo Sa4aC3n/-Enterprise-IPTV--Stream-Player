@@ -123,6 +123,7 @@ class VoiceRecognitionManager @Inject constructor(
             VoiceCommand.ToggleVocalDsp -> "تبديل وضع عازل الصوت DSP"
             VoiceCommand.ToggleCaptions -> "تبديل الترجمة التوضيحية"
             VoiceCommand.ToggleFullscreen -> "تبديل ملء الشاشة"
+            VoiceCommand.OpenQualitySettings -> "فتح إعدادات الجودة ومؤشر البيانات"
             is VoiceCommand.Unrecognized -> "تم سماع: $rawText"
         }
     }

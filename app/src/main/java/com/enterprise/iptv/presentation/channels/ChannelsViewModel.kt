@@ -78,6 +78,9 @@ class ChannelsViewModel @Inject constructor(
     // حالة الأوامر والتعرف الصوتي (Voice Commands)
     val voiceState = voiceManager.voiceState
 
+    // إحصائيات استهلاك البيانات والسرعة اللحظية للبث (Data Usage & Speed Meter)
+    val networkStats = playerEngine.networkStats
+
     // حالة وأجهزة البث للشاشات الذكية (DLNA / Cast)
     val discoveredCastDevices = castManager.discoveredDevices
     val isScanningForCast = castManager.isScanning
@@ -488,6 +491,10 @@ class ChannelsViewModel @Inject constructor(
         playerEngine.play()
     }
 
+    fun resetSessionDataCounter() {
+        playerEngine.resetSessionDataCounter()
+    }
+
     // إدارة الأوامر والتعرف الصوتي (Voice Commands)
     fun startVoiceListening() {
         voiceManager.startListening()
@@ -542,6 +549,7 @@ class ChannelsViewModel @Inject constructor(
                 playerEngine.toggleCaptions()
             }
             VoiceCommand.ToggleFullscreen -> {}
+            VoiceCommand.OpenQualitySettings -> {}
             is VoiceCommand.Unrecognized -> {
                 if (command.rawText.isNotBlank()) {
                     onSearchQueryChange(command.rawText)

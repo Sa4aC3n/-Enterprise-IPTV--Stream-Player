@@ -50,6 +50,11 @@ sealed interface VoiceCommand {
     data object ToggleFullscreen : VoiceCommand
 
     /**
+     * فتح إعدادات الجودة وعداد استهلاك البيانات (Quality & Data Meter)
+     */
+    data object OpenQualitySettings : VoiceCommand
+
+    /**
      * أمر غير معروف أو عام
      */
     data class Unrecognized(val rawText: String) : VoiceCommand

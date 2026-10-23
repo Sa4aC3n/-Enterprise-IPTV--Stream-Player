@@ -49,6 +49,11 @@ class VoiceCommandParser @Inject constructor() {
             return VoiceCommand.ToggleFullscreen
         }
 
+        // 7.1 أوامر جودة البث وعداد البيانات
+        if (text.contains("جودة") || text.contains("استهلاك") || text.contains("عداد") || text.contains("سرعة") || text.contains("quality")) {
+            return VoiceCommand.OpenQualitySettings
+        }
+
         // 8. أوامر البحث الصريحة
         val searchPrefixes = listOf("ابحث عن", "ابحث عن قناة", "بحث عن", "بحث", "دور على", "search for", "find")
         for (prefix in searchPrefixes) {
