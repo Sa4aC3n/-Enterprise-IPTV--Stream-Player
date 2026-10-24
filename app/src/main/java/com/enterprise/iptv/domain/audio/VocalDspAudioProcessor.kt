@@ -125,7 +125,7 @@ class VocalDspAudioProcessor @Inject constructor() : AudioProcessor {
 
             when (mode) {
                 VocalDspMode.REMOVE_VOCALS -> {
-                    // 1. خوارزمية إلغاء الطور الصوتي للمركز (Center-Channel Cancellation OOPS)
+                    // 1. خوارزمية إلغاء الطور الصوتي للمركز المحسنة (Phase-Decorrelated Vocal Remover)
                     // في التسجيلات الستيريو، الغناء يكون في منتصف الإشارة (L = R)، بينما الموسيقى لها اتساع ستيريو
                     val diff = (left - right) * 0.85
 
@@ -134,8 +134,9 @@ class VocalDspAudioProcessor @Inject constructor() : AudioProcessor {
                     prevBassSample += alpha * (center - prevBassSample)
                     val bass = prevBassSample * 0.9
 
-                    val outLeft = clampShort(diff + bass)
-                    val outRight = clampShort(-diff + bass)
+                    // تصحيح الطور لمنع انعدام الصوت كلياً عند تشغيله على مكبرات الهواتف الأحادية (Mono Summing)
+                    val outLeft = clampShort(diff * 0.95 + bass)
+                    val outRight = clampShort(-diff * 0.45 + bass + (right * 0.15))
 
                     shortOutput.put(outLeft)
                     shortOutput.put(outRight)

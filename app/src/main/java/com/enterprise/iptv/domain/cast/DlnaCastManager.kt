@@ -72,26 +72,18 @@ class DlnaCastManager @Inject constructor(
         scanJob = scope.launch {
             val foundDevices = mutableMapOf<String, CastDevice>()
 
-            // 1. بدء فحص بروتوكول SSDP / UPnP المخصص للشاشات الذكية (Samsung, LG, Sony, Roku, Philips, etc.)
+            // 1. بدء فحص بروتوكول SSDP / UPnP المخصص للشاشات الذكية المدعومة فعلياً (Samsung, LG, Sony, Roku, Philips, etc.)
             val ssdpJob = launch {
                 discoverSsdpDevices { device ->
-                    foundDevices[device.id] = device
-                    _discoveredDevices.value = foundDevices.values.toList()
-                }
-            }
-
-            // 2. فحص أجهزة Google Cast / Chromecast عبر NsdManager
-            val nsdJob = launch {
-                discoverChromecastDevices { device ->
-                    foundDevices[device.id] = device
-                    _discoveredDevices.value = foundDevices.values.toList()
+                    if (device.avTransportControlUrl.isNotBlank()) {
+                        foundDevices[device.id] = device
+                        _discoveredDevices.value = foundDevices.values.toList()
+                    }
                 }
             }
 
             delay(timeoutMs)
             ssdpJob.cancel()
-            nsdJob.cancel()
-            stopNsdDiscovery()
             _isScanning.value = false
         }
     }

@@ -92,21 +92,35 @@ class EpgReminderManager @Inject constructor(
 
         if (alarmManager != null) {
             try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    if (alarmManager.canScheduleExactAlarms()) {
+                        alarmManager.setExactAndAllowWhileIdle(
+                            AlarmManager.RTC_WAKEUP,
+                            triggerTime,
+                            pendingIntent
+                        )
+                    } else {
+                        alarmManager.setWindow(
+                            AlarmManager.RTC_WAKEUP,
+                            triggerTime,
+                            60_000L,
+                            pendingIntent
+                        )
+                    }
+                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     alarmManager.setExactAndAllowWhileIdle(
                         AlarmManager.RTC_WAKEUP,
                         triggerTime,
                         pendingIntent
                     )
                 } else {
-                    alarmManager.setExact(
+                    alarmManager.set(
                         AlarmManager.RTC_WAKEUP,
                         triggerTime,
                         pendingIntent
                     )
                 }
-            } catch (e: SecurityException) {
-                // إذا لم يتم منح إذن المنبه الدقيق على أندرويد 12+، نستخدم الطريقة البديلة
+            } catch (e: Exception) {
                 alarmManager.set(
                     AlarmManager.RTC_WAKEUP,
                     triggerTime,
@@ -161,18 +175,17 @@ class EpgReminderManager @Inject constructor(
             if (reminder.startEpochMs > now) {
                 val pendingIntent = createPendingIntent(reminder)
                 try {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        alarmManager?.setExactAndAllowWhileIdle(
-                            AlarmManager.RTC_WAKEUP,
-                            reminder.scheduledTimeMs.coerceAtLeast(now + 1000),
-                            pendingIntent
-                        )
+                    val trigger = reminder.scheduledTimeMs.coerceAtLeast(now + 1000)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        if (alarmManager?.canScheduleExactAlarms() == true) {
+                            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, trigger, pendingIntent)
+                        } else {
+                            alarmManager?.setWindow(AlarmManager.RTC_WAKEUP, trigger, 60_000L, pendingIntent)
+                        }
+                    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        alarmManager?.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, trigger, pendingIntent)
                     } else {
-                        alarmManager?.setExact(
-                            AlarmManager.RTC_WAKEUP,
-                            reminder.scheduledTimeMs.coerceAtLeast(now + 1000),
-                            pendingIntent
-                        )
+                        alarmManager?.set(AlarmManager.RTC_WAKEUP, trigger, pendingIntent)
                     }
                     validReminders[reminder.programId] = reminder
                 } catch (e: Exception) {

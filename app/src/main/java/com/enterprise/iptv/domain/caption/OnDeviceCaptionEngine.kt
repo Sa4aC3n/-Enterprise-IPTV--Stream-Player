@@ -29,6 +29,7 @@ class OnDeviceCaptionEngine @Inject constructor(
     val isActive = _isActive.asStateFlow()
 
     private var speechRecognizer: SpeechRecognizer? = null
+    private var consecutiveErrors = 0
 
     val isRecognitionSupported: Boolean
         get() = SpeechRecognizer.isRecognitionAvailable(context)
@@ -36,6 +37,7 @@ class OnDeviceCaptionEngine @Inject constructor(
     fun startListening() {
         if (!isRecognitionSupported) return
         stopListening()
+        consecutiveErrors = 0
 
         try {
             speechRecognizer = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -51,20 +53,23 @@ class OnDeviceCaptionEngine @Inject constructor(
                 override fun onBufferReceived(buffer: ByteArray?) {}
 
                 override fun onEndOfSpeech() {
-                    // إعادة الاستماع الفوري لضمان تدفق الترجمة دون انقطاع أثناء البث
                     if (_isActive.value) {
                         restartListening()
                     }
                 }
 
                 override fun onError(error: Int) {
-                    if (_isActive.value) {
-                        // إعادة المحاولة التلقائية بعد أي خطأ مؤقت في التعرف
+                    consecutiveErrors++
+                    if (_isActive.value && consecutiveErrors <= 3) {
                         restartListening()
+                    } else if (consecutiveErrors > 3) {
+                        _liveCaptionsText.value = "الترجمة التوضيحية الحية غير متوفرة محلياً أو تتطلب إذناً"
+                        _isActive.value = false
                     }
                 }
 
                 override fun onResults(results: Bundle?) {
+                    consecutiveErrors = 0
                     val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                     if (!matches.isNullOrEmpty()) {
                         _liveCaptionsText.value = matches[0]

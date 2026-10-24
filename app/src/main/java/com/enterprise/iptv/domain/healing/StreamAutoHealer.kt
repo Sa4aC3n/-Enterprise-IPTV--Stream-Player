@@ -1,6 +1,8 @@
 package com.enterprise.iptv.domain.healing
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -21,8 +23,8 @@ class StreamAutoHealer @Inject constructor(
 ) {
     private val probeClient: OkHttpClient by lazy {
         okHttpClient.newBuilder()
-            .connectTimeout(5, TimeUnit.SECONDS)
-            .readTimeout(5, TimeUnit.SECONDS)
+            .connectTimeout(4, TimeUnit.SECONDS)
+            .readTimeout(4, TimeUnit.SECONDS)
             .followRedirects(true)
             .build()
     }
@@ -30,10 +32,11 @@ class StreamAutoHealer @Inject constructor(
     suspend fun probeStream(url: String): ServerHealth = withContext(Dispatchers.IO) {
         val start = System.currentTimeMillis()
         try {
+            // استخدام طلب GET محدود البايتات متوافق مع كافة خوادم البث المباشر و HLS/TS
             val request = Request.Builder()
                 .url(url)
-                .header("Range", "bytes=0-1")
-                .head()
+                .header("Range", "bytes=0-1024")
+                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) EnterpriseIPTV/1.0")
                 .build()
 
             val response = probeClient.newCall(request).execute()
@@ -58,7 +61,9 @@ class StreamAutoHealer @Inject constructor(
 
     suspend fun findFastestServer(urls: List<String>): ServerHealth? = withContext(Dispatchers.IO) {
         if (urls.isEmpty()) return@withContext null
-        val results = urls.map { probeStream(it) }
+        // فحص متوازي فائق السرعة لكافة السيرفرات في نفس اللحظة
+        val deferreds = urls.map { async { probeStream(it) } }
+        val results = deferreds.awaitAll()
         results.filter { it.isReachable }.minByOrNull { it.latencyMs }
     }
 }

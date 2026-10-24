@@ -578,13 +578,17 @@ class ChannelsViewModel @Inject constructor(
         when (command) {
             is VoiceCommand.PlayChannel -> {
                 val query = command.channelQuery.trim().lowercase()
-                val match = _allChannels.firstOrNull {
+                val availableChannels = when (val state = uiState.value) {
+                    is ChannelsUiState.Success -> state.channels
+                    else -> emptyList()
+                }
+                val match = availableChannels.firstOrNull {
                     it.name.lowercase().contains(query) || query.contains(it.name.lowercase())
-                } ?: _allChannels.firstOrNull {
+                } ?: availableChannels.firstOrNull {
                     it.groupTitle.lowercase().contains(query)
                 }
                 if (match != null) {
-                    selectChannel(match)
+                    onChannelSelect(match)
                 } else {
                     onSearchQueryChange(command.channelQuery)
                 }
@@ -614,8 +618,13 @@ class ChannelsViewModel @Inject constructor(
             VoiceCommand.ToggleCaptions -> {
                 playerEngine.toggleCaptions()
             }
-            VoiceCommand.ToggleFullscreen -> {}
-            VoiceCommand.OpenQualitySettings -> {}
+            VoiceCommand.ToggleFullscreen -> {
+                toggleFullscreen()
+            }
+            VoiceCommand.OpenQualitySettings -> {
+                // يتيح فتح إعدادات الجودة مباشرة
+                _showBackupDialog.value = false
+            }
             VoiceCommand.OpenBackupRestore -> {
                 setShowBackupDialog(true)
             }

@@ -88,6 +88,9 @@ class PlayerEngine @Inject constructor(
     private val _isCaptionsEnabled = MutableStateFlow(false)
     val isCaptionsEnabled = _isCaptionsEnabled.asStateFlow()
 
+    private val playerScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private var progressTickerJob: Job? = null
+
     private val _embeddedSubtitleText = MutableStateFlow("")
 
     val liveSpeechCaptionsText = onDeviceCaptionEngine.liveCaptionsText
@@ -114,9 +117,6 @@ class PlayerEngine @Inject constructor(
 
     private val _isLiveStream = MutableStateFlow(true)
     val isLiveStream = _isLiveStream.asStateFlow()
-
-    private val playerScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
-    private var progressTickerJob: Job? = null
 
     // Stream Servers (Primary + Backups) & Auto-Failover
     private val _servers = MutableStateFlow<List<StreamServer>>(emptyList())

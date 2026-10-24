@@ -19,6 +19,8 @@ class KidsSpaceManager @Inject constructor(
     val isKidsModeActive = _isKidsModeActive.asStateFlow()
 
     private val defaultPin = "0000"
+    private var failedAttempts = 0
+    private var lockoutUntilMs = 0L
 
     private fun getStoredPin(): String = prefs.getString("kids_pin", defaultPin) ?: defaultPin
 
@@ -40,13 +42,33 @@ class KidsSpaceManager @Inject constructor(
         return true
     }
 
+    fun isLockedOut(): Boolean = System.currentTimeMillis() < lockoutUntilMs
+
+    fun getRemainingLockoutSeconds(): Int {
+        val remaining = (lockoutUntilMs - System.currentTimeMillis()) / 1000
+        return if (remaining > 0) remaining.toInt() else 0
+    }
+
     fun disableKidsMode(pin: String): Boolean {
+        val now = System.currentTimeMillis()
+        if (now < lockoutUntilMs) {
+            return false // قفل مؤقت ضد التخمين المتكرر
+        }
+
         if (pin.trim() == getStoredPin().trim()) {
+            failedAttempts = 0
+            lockoutUntilMs = 0L
             prefs.edit().putBoolean("kids_mode_active", false).apply()
             _isKidsModeActive.value = false
             return true
+        } else {
+            failedAttempts++
+            if (failedAttempts >= 5) {
+                lockoutUntilMs = now + 30_000L // حظر لمدة 30 ثانية بعد 5 محاولات متتالية خاطئة
+                failedAttempts = 0
+            }
+            return false
         }
-        return false
     }
 
     fun changePin(oldPin: String, newPin: String): Boolean {

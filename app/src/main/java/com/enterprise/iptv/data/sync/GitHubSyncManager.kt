@@ -44,6 +44,10 @@ class GitHubSyncManager @Inject constructor(
             }
 
             val channelsArray = json.getJSONArray("channels")
+            val existingFavorites = channelDao.getFavoriteChannels()
+            val favIdSet = existingFavorites.map { it.id }.toSet()
+            val favUrlSet = existingFavorites.map { it.streamUrl }.toSet()
+            val favNameSet = existingFavorites.map { it.name }.toSet()
             val channelEntities = mutableListOf<ChannelEntity>()
 
             for (i in 0 until channelsArray.length()) {
@@ -53,17 +57,22 @@ class GitHubSyncManager @Inject constructor(
                     (0 until backupUrlsArray.length()).map { backupUrlsArray.getString(it) }.joinToString("||")
                 } else null
 
+                val channelId = obj.getString("id")
+                val channelName = obj.getString("name")
+                val streamUrl = obj.getString("stream_url")
+                val isFav = favIdSet.contains(channelId) || favUrlSet.contains(streamUrl) || favNameSet.contains(channelName)
+
                 channelEntities.add(
                     ChannelEntity(
-                        id = obj.getString("id"),
-                        name = obj.getString("name"),
-                        streamUrl = obj.getString("stream_url"),
+                        id = channelId,
+                        name = channelName,
+                        streamUrl = streamUrl,
                         backupUrls = backupUrls,
                         logoUrl = obj.optString("logo_url", null),
                         groupTitle = obj.optString("category", "عام"),
                         countryCode = obj.optString("country", null),
                         languageCode = obj.optString("language", "ar"),
-                        isFavorite = false,
+                        isFavorite = isFav,
                         playlistId = DEFAULT_PLAYLIST_ID
                     )
                 )
@@ -107,6 +116,10 @@ class GitHubSyncManager @Inject constructor(
                 }
 
                 val channelsArray = json.getJSONArray("channels")
+                val existingFavorites = channelDao.getFavoriteChannels()
+                val favIdSet = existingFavorites.map { it.id }.toSet()
+                val favUrlSet = existingFavorites.map { it.streamUrl }.toSet()
+                val favNameSet = existingFavorites.map { it.name }.toSet()
                 val updatedEntities = mutableListOf<ChannelEntity>()
 
                 for (i in 0 until channelsArray.length()) {
@@ -116,17 +129,22 @@ class GitHubSyncManager @Inject constructor(
                         (0 until backupUrlsArray.length()).map { backupUrlsArray.getString(it) }.joinToString("||")
                     } else null
 
+                    val channelId = obj.getString("id")
+                    val channelName = obj.getString("name")
+                    val streamUrl = obj.getString("stream_url")
+                    val isFav = favIdSet.contains(channelId) || favUrlSet.contains(streamUrl) || favNameSet.contains(channelName)
+
                     updatedEntities.add(
                         ChannelEntity(
-                            id = obj.getString("id"),
-                            name = obj.getString("name"),
-                            streamUrl = obj.getString("stream_url"),
+                            id = channelId,
+                            name = channelName,
+                            streamUrl = streamUrl,
                             backupUrls = backupUrls,
                             logoUrl = obj.optString("logo_url", null),
                             groupTitle = obj.optString("category", "عام"),
                             countryCode = obj.optString("country", null),
                             languageCode = obj.optString("language", "ar"),
-                            isFavorite = false,
+                            isFavorite = isFav,
                             playlistId = DEFAULT_PLAYLIST_ID
                         )
                     )
