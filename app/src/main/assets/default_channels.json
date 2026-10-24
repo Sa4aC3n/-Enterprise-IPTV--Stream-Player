@@ -318,15 +318,6 @@
                          "language":  "ar"
                      },
                      {
-                         "id":  "KoogiTV.eg",
-                         "name":  "Koogi TV",
-                         "stream_url":  "https://5d658d7e9f562.streamlock.net/koogi.tv/koogi.smil/playlist.m3u8",
-                         "logo_url":  "https://iptv-org.github.io/iptv/logos/KoogiTV.eg.png",
-                         "category":  "كرتون وأطفال",
-                         "country":  "EG",
-                         "language":  "ar"
-                     },
-                     {
                          "id":  "MixHollywood.eg",
                          "name":  "Mix Hollywood",
                          "stream_url":  "https://ml-pull-hwc.myco.io/MixTV/hls/index.m3u8",
@@ -372,24 +363,6 @@
                          "language":  "ar"
                      },
                      {
-                         "id":  "AlGhadPlus.eg",
-                         "name":  "Al Ghad Plus",
-                         "stream_url":  "https://playlist.fasttvcdn.com/pl/ykvm3f2fhokwxqsurp9xcg/alghad-plus/playlist.m3u8",
-                         "logo_url":  "https://iptv-org.github.io/iptv/logos/AlGhadPlus.eg.png",
-                         "category":  "أخبار",
-                         "country":  "EG",
-                         "language":  "ar"
-                     },
-                     {
-                         "id":  "AlGhadTV.eg",
-                         "name":  "Al Ghad TV",
-                         "stream_url":  "https://eazyvwqssi.erbvr.com/alghadtv/alghadtv.m3u8",
-                         "logo_url":  "https://iptv-org.github.io/iptv/logos/AlGhadTV.eg.png",
-                         "category":  "أخبار",
-                         "country":  "EG",
-                         "language":  "ar"
-                     },
-                     {
                          "id":  "AlQaheraNews.eg",
                          "name":  "Al Qahera News",
                          "stream_url":  "https://bcovlive-a.akamaihd.net/d30cbb3350af4cb7a6e05b9eb1bfd850/eu-west-1/6057955906001/playlist.m3u8",
@@ -403,15 +376,6 @@
                          "name":  "Aghapy TV",
                          "stream_url":  "https://5b622f07944df.streamlock.net/aghapy.tv/aghapy.smil/playlist.m3u8",
                          "logo_url":  "https://iptv-org.github.io/iptv/logos/AghapyTV.eg.png",
-                         "category":  "إسلامية",
-                         "country":  "EG",
-                         "language":  "ar"
-                     },
-                     {
-                         "id":  "CopticTV.eg",
-                         "name":  "Coptic TV",
-                         "stream_url":  "https://ctv.icopts.app/CTV/index.fmp4.m3u8",
-                         "logo_url":  "https://iptv-org.github.io/iptv/logos/CopticTV.eg.png",
                          "category":  "إسلامية",
                          "country":  "EG",
                          "language":  "ar"
@@ -458,15 +422,6 @@
                          "stream_url":  "https://dmiffthvll.cdn.mangomolo.com/dubaizaman/smil:dubaizaman.stream.smil/playlist.m3u8",
                          "logo_url":  "https://iptv-org.github.io/iptv/logos/DubaiZaman.ae.png",
                          "category":  "أفلام",
-                         "country":  "AE",
-                         "language":  "ar"
-                     },
-                     {
-                         "id":  "BaynounahTV.ae",
-                         "name":  "Baynounah TV",
-                         "stream_url":  "https://vo-live.cdb.cdn.orange.com/Content/Channel/Baynounah/HLS/index.m3u8",
-                         "logo_url":  "https://iptv-org.github.io/iptv/logos/BaynounahTV.ae.png",
-                         "category":  "وثائقيات",
                          "country":  "AE",
                          "language":  "ar"
                      },
@@ -1367,168 +1322,6 @@
                          "stream_url":  "https://stream.shams.tv/hls/stream.m3u8",
                          "logo_url":  "https://iptv-org.github.io/iptv/logos/ShamsTV.iq.png",
                          "category":  "أخبار",
-                         "country":  "IQ",
-                         "language":  "ar"
-                     },
-                     {
-                         "id":  "ABNsat.iq",
-                         "name":  "ABNsat",
-                         "stream_url":  "https://mediaserver.abnvideos.com/streams/abnsat.m3u8",
-                         "logo_url":  "https://iptv-org.github.io/iptv/logos/ABNsat.iq.png",
-                         "category":  "إسلامية",
-                         "country":  "IQ",
-                         "language":  "ar"
-                     },
-                     {
-                         "id":  "AlAimmaTV.iq",
-                         "name":  "Al-Aimma TV",
-                         "stream_url":  "https://alaimma.tv/live/index.m3u8",
-                         "logo_url":  "https://iptv-org.github.io/iptv/logos/AlAimmaTV.iq.png",
-                         "category":  "إسلامية",
-                         "country":  "IQ",
-                         "language":  "ar"
-                     },
-                     {
-                         "id":  "AlJawadainTV.iq",
-                         "name":  "Al-Jawadain TV",
-                         "stream_url":  "https://live.aljawadain.org/live/aljawadaintv/playlist.m3u8",
-                         "logo_url":  "https://iptv-org.github.io/iptv/logos/AlJawadainTV.iq.png",
-                         "category":  "إسلامية",
-                         "country":  "IQ",
-                         "language":  "ar"
-                     },
-                     {
-                         "id":  "AlabbassiaTV.iq",
-                         "name":  "Alabbassia TV",
-                         "stream_url":  "https://stream.alabbassia.com/live/alabbassia/index.m3u8",
-                         "logo_url":  "https://iptv-org.github.io/iptv/logos/AlabbassiaTV.iq.png",
-                         "category":  "إسلامية",
-                         "country":  "IQ",
-                         "language":  "ar"
-                     },
-                     {
-                         "id":  "Alquran.iq",
-                         "name":  "Alquran",
-                         "stream_url":  "https://ktvlive.online/stream/hls/ch1.m3u8",
-                         "logo_url":  "https://iptv-org.github.io/iptv/logos/Alquran.iq.png",
-                         "category":  "إسلامية",
-                         "country":  "IQ",
-                         "language":  "ar"
-                     },
-                     {
-                         "id":  "AmozhgaryTV.iq",
-                         "name":  "Amozhgary TV",
-                         "stream_url":  "https://app-live.org/live/3268334b/index.m3u8",
-                         "logo_url":  "https://iptv-org.github.io/iptv/logos/AmozhgaryTV.iq.png",
-                         "category":  "إسلامية",
-                         "country":  "IQ",
-                         "language":  "ar"
-                     },
-                     {
-                         "id":  "BeitolAbbasTVChannel.iq",
-                         "name":  "BeitolAbbas TV Channel",
-                         "stream_url":  "https://live.beitolabbas.tv/live/beitolabbastv.m3u8",
-                         "logo_url":  "https://iptv-org.github.io/iptv/logos/BeitolAbbasTVChannel.iq.png",
-                         "category":  "إسلامية",
-                         "country":  "IQ",
-                         "language":  "ar"
-                     },
-                     {
-                         "id":  "FarmodaTV.iq",
-                         "name":  "FarmodaTV",
-                         "stream_url":  "https://avr.host247.net/live/FarmodaTV/playlist.m3u8",
-                         "logo_url":  "https://iptv-org.github.io/iptv/logos/FarmodaTV.iq.png",
-                         "category":  "إسلامية",
-                         "country":  "IQ",
-                         "language":  "ar"
-                     },
-                     {
-                         "id":  "ImamHusseinTV1.iq",
-                         "name":  "Imam Hussein TV 1",
-                         "stream_url":  "https://live.imamhossaintv.com/live/ih1.m3u8",
-                         "logo_url":  "https://iptv-org.github.io/iptv/logos/ImamHusseinTV1.iq.png",
-                         "category":  "إسلامية",
-                         "country":  "IQ",
-                         "language":  "ar"
-                     },
-                     {
-                         "id":  "ImamHusseinTV2.iq",
-                         "name":  "Imam Hussein TV 2",
-                         "stream_url":  "https://live.imamhossaintv.com/live/ih2.m3u8",
-                         "logo_url":  "https://iptv-org.github.io/iptv/logos/ImamHusseinTV2.iq.png",
-                         "category":  "إسلامية",
-                         "country":  "IQ",
-                         "language":  "ar"
-                     },
-                     {
-                         "id":  "ImamHusseinTV3.iq",
-                         "name":  "Imam Hussein TV 3",
-                         "stream_url":  "https://live.imamhossaintv.com/live/ih3.m3u8",
-                         "logo_url":  "https://iptv-org.github.io/iptv/logos/ImamHusseinTV3.iq.png",
-                         "category":  "إسلامية",
-                         "country":  "IQ",
-                         "language":  "ar"
-                     },
-                     {
-                         "id":  "ImamHusseinTV4.iq",
-                         "name":  "Imam Hussein TV 4",
-                         "stream_url":  "https://live.imamhossaintv.com/live/ih4.m3u8",
-                         "logo_url":  "https://iptv-org.github.io/iptv/logos/ImamHusseinTV4.iq.png",
-                         "category":  "إسلامية",
-                         "country":  "IQ",
-                         "language":  "ar"
-                     },
-                     {
-                         "id":  "ImamHusseinTV5.iq",
-                         "name":  "Imam Hussein TV 5",
-                         "stream_url":  "http://live.al-zahratv.com/live/playlist.m3u8",
-                         "logo_url":  "https://iptv-org.github.io/iptv/logos/ImamHusseinTV5.iq.png",
-                         "category":  "إسلامية",
-                         "country":  "IQ",
-                         "language":  "ar"
-                     },
-                     {
-                         "id":  "ImamHusseinTV6.iq",
-                         "name":  "Imam Hussein TV 6",
-                         "stream_url":  "http://live.imamhossaintv.com/live/ih6.m3u8",
-                         "logo_url":  "https://iptv-org.github.io/iptv/logos/ImamHusseinTV6.iq.png",
-                         "category":  "إسلامية",
-                         "country":  "IQ",
-                         "language":  "ar"
-                     },
-                     {
-                         "id":  "KarbalaDocumentary.iq",
-                         "name":  "Karbala Documentary",
-                         "stream_url":  "https://ktvlive.online/stream/hls/ch3.m3u8",
-                         "logo_url":  "https://iptv-org.github.io/iptv/logos/KarbalaDocumentary.iq.png",
-                         "category":  "إسلامية",
-                         "country":  "IQ",
-                         "language":  "ar"
-                     },
-                     {
-                         "id":  "MarjaeyatTVArabic.iq",
-                         "name":  "Marjaeyat TV Arabic",
-                         "stream_url":  "https://livefa.marjaeyattv.com/mtv_ar/playlist.m3u8",
-                         "logo_url":  "https://iptv-org.github.io/iptv/logos/MarjaeyatTVArabic.iq.png",
-                         "category":  "إسلامية",
-                         "country":  "IQ",
-                         "language":  "ar"
-                     },
-                     {
-                         "id":  "MarjaeyatTVEnglish.iq",
-                         "name":  "Marjaeyat TV English",
-                         "stream_url":  "https://livefa.marjaeyattv.com/mtv_en/playlist.m3u8",
-                         "logo_url":  "https://iptv-org.github.io/iptv/logos/MarjaeyatTVEnglish.iq.png",
-                         "category":  "إسلامية",
-                         "country":  "IQ",
-                         "language":  "ar"
-                     },
-                     {
-                         "id":  "MarjaeyatTVPersian.iq",
-                         "name":  "Marjaeyat TV Persian",
-                         "stream_url":  "https://livefa.marjaeyattv.com/mtv_fa/playlist.m3u8",
-                         "logo_url":  "https://iptv-org.github.io/iptv/logos/MarjaeyatTVPersian.iq.png",
-                         "category":  "إسلامية",
                          "country":  "IQ",
                          "language":  "ar"
                      },
